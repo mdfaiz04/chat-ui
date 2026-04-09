@@ -18,8 +18,10 @@ export default function ChatWindow() {
   const [isFetchingHistory, setIsFetchingHistory] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(true); // default dark
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -36,6 +38,16 @@ export default function ChatWindow() {
       document.documentElement.classList.remove("dark");
     }
   }, [isDarkMode]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -110,14 +122,41 @@ export default function ChatWindow() {
           </button>
           {!isEmpty && (
             <button
-              onClick={() => setShowClearConfirm(true)}
-              className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium transition"
+               onClick={() => setShowClearConfirm(true)}
+               className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium transition"
+             >
+               Clear Chat
+             </button>
+           )}
+          <div className="relative" ref={profileMenuRef}>
+            <button
+              onClick={() => setShowProfileMenu(!showProfileMenu)}
+              className="w-9 h-9 bg-gradient-to-tr from-blue-600 to-blue-400 text-white rounded-full flex items-center justify-center font-semibold shadow-sm hover:opacity-90 transition cursor-pointer"
             >
-              Clear Chat
+              AJ
             </button>
-          )}
-          <div className="w-9 h-9 bg-gradient-to-tr from-blue-600 to-blue-400 text-white rounded-full flex items-center justify-center font-semibold shadow-sm">
-            AJ
+            
+            {showProfileMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-2 z-50 animate-fade-in-up">
+                <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700/50 mb-1">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">AJ Profile</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">aj@example.com</p>
+                </div>
+                <button
+                  onClick={() => setShowProfileMenu(false)}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition cursor-pointer"
+                >
+                  Your Account Details
+                </button>
+                <div className="my-1 border-t border-gray-100 dark:border-gray-700/50"></div>
+                <button
+                  onClick={() => setShowProfileMenu(false)}
+                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/10 transition cursor-pointer"
+                >
+                  Sign Out
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
