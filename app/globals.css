@@ -1,26 +1,44 @@
 @import "tailwindcss";
+@custom-variant dark (&:is(.dark *));
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+html,
+body {
+  font-family: sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Custom animation for messages fading in when they appear */
+/* @keyframes defines the animation: start invisible + shifted down, end fully visible */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;           /* Start fully transparent */
+    transform: translateY(10px); /* Start 10px lower than final position */
+  }
+  to {
+    opacity: 1;           /* End fully visible */
+    transform: translateY(0);    /* End at normal position */
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* This class applies the animation — we'll use it in the Message component */
+/* 0.3s = animation lasts 0.3 seconds */
+/* ease-out = starts fast, slows down at the end (natural feel) */
+.message-animate {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+/* Smooth scrollbar styling for the message list */
+/* Makes the scrollbar thin and subtle instead of the default chunky one */
+.messages-scroll::-webkit-scrollbar {
+  width: 4px;             /* Thin scrollbar */
+}
+.messages-scroll::-webkit-scrollbar-track {
+  background: transparent; /* Invisible track */
+}
+.messages-scroll::-webkit-scrollbar-thumb {
+  background: #e2e8f0;    /* Light gray thumb */
+  border-radius: 2px;
+}
+/* Dark mode scrollbar */
+.dark .messages-scroll::-webkit-scrollbar-thumb {
+  background: #374151;
 }
