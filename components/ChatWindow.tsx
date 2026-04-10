@@ -5,7 +5,7 @@ import Message from "./Message";
 import InputArea from "./InputArea";
 import TypingIndicator from "./TypingIndicator";
 import Sidebar from "./Sidebar";
-import { Menu } from "lucide-react";
+import { Menu, ArrowLeft } from "lucide-react";
 
 /**
  * MessageType defines the structure of a chat message
@@ -155,10 +155,10 @@ export default function ChatWindow() {
   // ---------------- UI RENDER ----------------
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+    <div className="min-h-[100dvh] flex flex-col bg-gray-50 dark:bg-gradient-to-b dark:from-[#0f172a] dark:to-[#020617] text-gray-900 dark:text-white transition-colors duration-300">
 
       {/* HEADER SECTION */}
-      <div className="flex justify-between items-center px-4 md:px-6 py-3 border-b shadow-sm sticky top-0 z-20">
+      <div className="flex justify-between items-center px-4 md:px-6 py-3 border-b border-gray-200 dark:border-white/10 shadow-sm sticky top-0 z-20 bg-white dark:bg-transparent dark:backdrop-blur-xl">
 
         {/* LEFT SIDE: Menu + Title */}
         <div className="flex items-center gap-2">
@@ -170,12 +170,15 @@ export default function ChatWindow() {
 
           {/* Chat Back Button */}
           {isChatOpen && (
-            <button onClick={() => setIsChatOpen(false)}>
-              ←
+            <button
+              onClick={() => setIsChatOpen(false)}
+              className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-all duration-200 text-gray-600 dark:text-white/80"
+            >
+              <ArrowLeft className="w-5 h-5" />
             </button>
           )}
 
-          <h1 className="text-xl font-bold">Nexus AI</h1>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Nexus AI</h1>
         </div>
 
         {/* RIGHT SIDE: Theme + Profile */}
@@ -187,18 +190,27 @@ export default function ChatWindow() {
           </button>
 
           {/* Profile Menu */}
-          <div ref={profileMenuRef}>
-            <button onClick={() => setShowProfileMenu(!showProfileMenu)}>
+          <div ref={profileMenuRef} className="relative">
+            <button
+              onClick={() => setShowProfileMenu(!showProfileMenu)}
+              className="w-8 h-8 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center"
+            >
               AJ
             </button>
 
             {/* Dropdown */}
             {showProfileMenu && (
-              <div>
-                <button onClick={() => setShowProfileMenu(false)}>
+              <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
+                <button
+                  onClick={() => setShowProfileMenu(false)}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
                   Account Details
                 </button>
-                <button onClick={() => setShowProfileMenu(false)}>
+                <button
+                  onClick={() => setShowProfileMenu(false)}
+                  className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
                   Sign Out
                 </button>
               </div>
@@ -207,23 +219,51 @@ export default function ChatWindow() {
         </div>
       </div>
 
-      {/* MAIN CHAT AREA */}
-      <div className="flex flex-col flex-1">
+      {/* CENTERED CONTENT WRAPPER */}
+      <div className="flex flex-col flex-1 max-w-3xl mx-auto mt-10 px-4 w-full">
 
         {/* Welcome Screen OR Chat Messages */}
         {!isChatOpen ? (
-          <div>
-            <h2>Welcome to Nexus AI</h2>
+          <div className="flex flex-col items-center justify-center flex-1 py-16 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-3xl shadow-sm dark:shadow-2xl dark:backdrop-blur-xl p-8">
 
-            {/* Quick Action Buttons */}
-            {["Chat", "Research", "Code", "Images"].map((text) => (
-              <button key={text} onClick={() => handleSendMessage(text)}>
-                {text}
-              </button>
-            ))}
+            {/* Gradient Heading */}
+            <h2 className="text-4xl font-extrabold mb-3 text-center text-gray-900 dark:text-white">
+              Welcome to{" "}
+              <span className="bg-gradient-to-r from-blue-500 to-cyan-500 dark:from-blue-400 dark:to-cyan-400 bg-clip-text text-transparent">
+                Nexus AI
+              </span>
+            </h2>
+            <p className="text-gray-500 dark:text-gray-400 mb-8 text-center text-sm">
+              Choose a mode to get started
+            </p>
+
+            {/* 2×2 Feature Card Grid */}
+            {(() => {
+              const options = [
+                { icon: "✨", label: "Chat & Brainstorm",    prompt: "Chat" },
+                { icon: "🔍", label: "Research & Summarize", prompt: "Research" },
+                { icon: "💻", label: "Code & Develop",       prompt: "Code" },
+                { icon: "🎨", label: "Create Images",        prompt: "Images" },
+              ];
+
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8 w-full">
+                  {options.map((item, index) => (
+                    <div
+                      key={index}
+                      onClick={() => handleSendMessage(item.prompt)}
+                      className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-800 dark:text-white p-4 rounded-2xl shadow-md dark:shadow-[0_8px_25px_rgba(0,0,0,0.4)] transition-all duration-200 cursor-pointer flex items-center gap-3 select-none"
+                    >
+                      <span className="text-2xl">{item.icon}</span>
+                      <span className="text-base font-medium">{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         ) : (
-          <div>
+          <div className="flex flex-col flex-1 overflow-y-auto py-4 gap-2">
             {/* Render Messages */}
             {messages.map((msg, index) => (
               <Message
@@ -241,11 +281,13 @@ export default function ChatWindow() {
           </div>
         )}
 
-        {/* INPUT AREA */}
-        <InputArea
-          onSendMessage={handleSendMessage}
-          isLoading={isLoading}
-        />
+        {/* INPUT AREA — fixed inside centered container */}
+        <div className="py-4">
+          <InputArea
+            onSendMessage={handleSendMessage}
+            isLoading={isLoading}
+          />
+        </div>
       </div>
 
       {/* SIDEBAR */}
