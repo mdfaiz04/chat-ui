@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import Message from "./Message";
 import InputArea from "./InputArea";
 import TypingIndicator from "./TypingIndicator";
+import Sidebar from "./Sidebar";
+import { Menu } from "lucide-react";
 
 interface MessageType {
   id: string;
@@ -18,6 +20,7 @@ export default function ChatWindow() {
   const [isDarkMode, setIsDarkMode] = useState(true); // default dark
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -104,6 +107,14 @@ export default function ChatWindow() {
       {/* HEADER */}
       <div className="flex justify-between items-center px-4 md:px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900 shadow-sm sticky top-0 z-20">
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="p-2 -ml-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800 transition-all duration-200 hover:scale-110"
+            aria-label="Toggle Sidebar"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          
           {isChatOpen && (
             <div className="relative group flex items-center animate-fade-in-up">
               <button
@@ -210,6 +221,7 @@ export default function ChatWindow() {
           </div>
         </div>
       </div>
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
     </div>
   );
 }
