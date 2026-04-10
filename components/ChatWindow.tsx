@@ -107,9 +107,9 @@ export default function ChatWindow() {
   const isEmpty = messages.length === 0;
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+    <div className="h-[100dvh] flex flex-col bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300 overflow-hidden">
       {/* HEADER */}
-      <div className="flex justify-between items-center px-4 md:px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 sticky top-0 z-20">
+      <div className="flex justify-between items-center px-4 md:px-6 py-4 border-b border-gray-200 dark:border-gray-800 shadow-sm bg-white/90 dark:bg-gray-900/90 backdrop-blur-md sticky top-0 z-20 shrink-0">
         <h1 className="text-xl font-bold tracking-tight">Nexus AI</h1>
         <div className="flex items-center gap-4">
           <button
@@ -130,7 +130,7 @@ export default function ChatWindow() {
           <div className="relative" ref={profileMenuRef}>
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="w-9 h-9 bg-gradient-to-tr from-blue-600 to-blue-400 text-white rounded-full flex items-center justify-center font-semibold shadow-sm hover:opacity-90 transition cursor-pointer"
+              className="w-9 h-9 bg-gradient-to-tr from-blue-600 to-blue-400 text-white rounded-full flex items-center justify-center font-semibold shadow-sm hover:shadow transition cursor-pointer"
             >
               AJ
             </button>
@@ -161,58 +161,62 @@ export default function ChatWindow() {
       </div>
 
       {showClearConfirm && (
-        <div className="bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 px-6 py-3 flex justify-between items-center border-b border-red-100 dark:border-red-900/30">
+        <div className="bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 px-6 py-3 flex justify-between items-center border-b border-red-100 dark:border-red-900/30 shrink-0">
           <span className="text-sm font-medium">Are you sure you want to clear all messages?</span>
           <div className="flex gap-4 text-sm font-semibold">
             <button onClick={() => setShowClearConfirm(false)} className="hover:opacity-80">Cancel</button>
-            <button onClick={handleClearChat} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded transition">Confirm</button>
+            <button onClick={handleClearChat} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded transition shadow-sm">Confirm</button>
           </div>
         </div>
       )}
 
       {/* MAIN CONTAINER */}
-      <div className="flex flex-col flex-1 w-full max-w-3xl mx-auto h-full px-4 relative">
-        <div className={`flex flex-col w-full transition-all duration-500 ease-in-out ${isEmpty ? "flex-1 justify-center pb-20" : "flex-1 block overflow-y-auto pb-4 custom-scrollbar"}`}>
-          {isEmpty ? (
-            <div className="w-full flex justify-center text-center">
-              <div className="max-w-2xl w-full flex flex-col items-center">
-                <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight">
-                  Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-400">Nexus AI</span>
-                </h2>
-                <p className="text-gray-500 dark:text-gray-400 mb-10 text-lg">
-                  Your Intelligent Partner for Chats, Insights, and Creativity
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full opacity-90 animate-fade-in-up">
-                  {["✨ Chat & Brainstorm", "🔍 Research & Summarize", "💻 Code & Develop", "🎨 Create Images"].map((text) => (
-                    <button key={text} className="bg-gray-50 dark:bg-gray-800/60 hover:bg-gray-100 dark:hover:bg-gray-700 p-4 rounded-2xl transition border border-gray-100 dark:border-gray-800 text-left cursor-text text-sm md:text-base font-medium shadow-sm">
-                      {text}
-                    </button>
-                  ))}
+      <div className="flex flex-col flex-1 w-full max-w-4xl mx-auto min-h-0 p-4 md:p-6 relative">
+        <div className="flex flex-col w-full h-full bg-white dark:bg-gray-800 rounded-3xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          
+          <div className={`flex flex-col w-full transition-all duration-500 ease-in-out px-4 md:px-6 relative ${isEmpty ? "flex-1 justify-center" : "flex-1 block overflow-y-auto pb-4 custom-scrollbar"}`}>
+            {isEmpty ? (
+              <div className="w-full flex justify-center text-center py-10">
+                <div className="max-w-2xl w-full flex flex-col items-center">
+                  <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight">
+                    Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-400">Nexus AI</span>
+                  </h2>
+                  <p className="text-gray-500 dark:text-gray-400 mb-10 text-lg">
+                    Your Intelligent Partner for Chats, Insights, and Creativity
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full opacity-90 animate-fade-in-up">
+                    {["✨ Chat & Brainstorm", "🔍 Research & Summarize", "💻 Code & Develop", "🎨 Create Images"].map((text) => (
+                      <button key={text} className="bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 p-4 rounded-2xl transition border border-gray-200 dark:border-gray-700 text-left cursor-text text-sm md:text-base font-medium shadow-sm hover:shadow-md">
+                        {text}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="pt-6 space-y-6">
-              {messages.map((msg, index) => (
-                <Message
-                  key={msg.id || `fallback-${index}`}
-                  role={msg.role}
-                  content={msg.content}
-                  timestamp={msg.timestamp}
-                />
-              ))}
-              {isLoading && <TypingIndicator />}
-              <div ref={messagesEndRef} className="h-4" />
-            </div>
-          )}
-        </div>
-        
-        {/* INPUT AREA */}
-        <div className={`w-full bg-white dark:bg-gray-900 pb-6 pt-2 shrink-0 ${isEmpty ? "" : "sticky bottom-0 z-10"}`}>
-          <InputArea onSendMessage={handleSendMessage} isLoading={isLoading} />
-          <div className="text-center mt-3 text-xs text-gray-400 dark:text-gray-500">
-            Nexus AI can make mistakes. Consider verifying important information.
+            ) : (
+              <div className="pt-6 space-y-3">
+                {messages.map((msg, index) => (
+                  <Message
+                    key={msg.id || `fallback-${index}`}
+                    role={msg.role}
+                    content={msg.content}
+                    timestamp={msg.timestamp}
+                  />
+                ))}
+                {isLoading && <TypingIndicator />}
+                <div ref={messagesEndRef} className="h-4" />
+              </div>
+            )}
           </div>
+          
+          {/* INPUT AREA */}
+          <div className="w-full bg-white dark:bg-gray-800 p-4 md:p-6 border-t border-gray-200 dark:border-gray-700 shrink-0">
+            <InputArea onSendMessage={handleSendMessage} isLoading={isLoading} />
+            <div className="text-center mt-3 text-xs text-gray-400 dark:text-gray-500">
+              Nexus AI can make mistakes. Consider verifying important information.
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
