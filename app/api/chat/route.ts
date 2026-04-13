@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import connectToDatabase from "@/lib/mongoose";
+import Message from "@/models/Message";
 
 // An array of mock bot responses
-// The bot will randomly pick one of these to reply with
-// Later, this is where real AI responses will go
 const mockResponses = [
   "That's an interesting point! Tell me more.",
   "I understand what you're saying. Can you elaborate?",
@@ -14,99 +14,104 @@ const mockResponses = [
   "Let me think about that for a moment...",
 ];
 
-// This is a helper function that picks a random response from the array above
-// Math.random() gives a random number between 0 and 1
-// Multiplying by array length and flooring gives a random valid index
 function getRandomResponse(): string {
   const randomIndex = Math.floor(Math.random() * mockResponses.length);
   return mockResponses[randomIndex];
 }
 
-// This is a helper function that makes our code "wait" for a given time
-// We use this to simulate the bot "thinking" (1.5 second delay)
-// setTimeout is wrapped in a Promise so we can use "await" with it
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// This is a POST request handler
-// POST = when someone wants to SEND/CREATE data (like sending a new message)
-// The "request" parameter contains everything the user sent to us
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { message, model } = body;
+    // 1. Connect to MongoDB
+    console.log("Connecting to database...");
+    await connectToDatabase();
 
-    // Use content if message is not provided (for backward compatibility if needed, but following requirement #2)
+    const body = await request.json();
+    const { message, model, image, chatId } = body;
     const chatContent = message || body.content;
 
-    // 6. Add Console Logs for Testing
-    console.log("Selected Model:", model);
-
-    // Validate — make sure the message isn't empty and is a string
-    if (!chatContent || typeof chatContent !== "string" || chatContent.trim() === "") {
-      return NextResponse.json(
-        { error: "Message content is required" },
-        { status: 400 }
-      );
+    // Validate
+    if (!chatId) {
+      return NextResponse.json({ error: "chatId is required" }, { status: 400 });
     }
 
-    // 3. Add Future API Structure & 7. Safety (Fallback if no API key)
+    console.log(`Processing message for chatId: ${chatId}, model: ${model}`);
+
+    if (!chatContent || typeof chatContent !== "string" || chatContent.trim() === "") {
+      return NextResponse.json({ error: "Message content is required" }, { status: 400 });
+    }
+
+    // 2. Save incoming user message to DB
+    console.log("Saving user message to MongoDB...");
+    const userMessage = await Message.create({
+      chatId,
+      role: "user",
+      content: chatContent,
+      model: model,
+      image: image,
+    });
+    console.log("User message saved:", userMessage._id);
+
+    // 3. Keep existing mock response generator logic
     const useRealAI = process.env.USE_REAL_AI === "true";
     let botReply = "";
 
     if (useRealAI) {
-      // 5. Add Model Routing Logic (placeholder only)
       if (model === "Gemini 3 Flash") {
         if (process.env.GEMINI_API_KEY) {
-          // Future real Gemini API logic here
-          // botReply = await callGeminiAPI(chatContent);
+          // Future real Gemini API logic
         }
       } else if (model === "Claude Sonnet") {
         if (process.env.CLAUDE_API_KEY) {
-          // Future real Claude API logic here
-          // botReply = await callClaudeAPI(chatContent);
+          // Future real Claude API logic
         }
       } else if (model === "GPT-OSS 120B") {
         if (process.env.OPENAI_API_KEY) {
-          // Future real OpenAI API logic here
-          // botReply = await callOpenAIAPI(chatContent);
+          // Future real OpenAI API logic
         }
       }
-
-      // If a real API was supposed to be used but failed or wasn't implemented yet, 
-      // botReply will be empty. We'll fall back to mock.
     }
 
-    // Fallback to mock response if not using real AI or if real AI logic didn't return a reply
+    // Fallback to mock
     if (!botReply) {
-      // Simulate the bot "thinking" with a 1.5 second delay
       await delay(1500);
       botReply = getRandomResponse();
     }
     
-    // Generate an ID for the mock message
-    const mockId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() + Math.random();
+    // 4. Save AI response also to DB
+    console.log("Saving AI response to MongoDB...");
+    const aiMessage = await Message.create({
+      chatId,
+      role: "assistant",
+      content: botReply,
+      model: model,
+    });
+    console.log("AI message saved:", aiMessage._id);
 
-    // Send the bot's message back to the frontend
+    // 5. Return AI response as before
     return NextResponse.json(
       {
         message: {
-          id: mockId,
+          id: aiMessage._id,
           role: "assistant",
-          content: botReply,
-          timestamp: new Date().toISOString(),
+          content: aiMessage.content,
+          timestamp: aiMessage.timestamp,
         }
       },
       { status: 201 }
     );
 
   } catch (error) {
-    // If anything goes wrong, log it and return an error response
-    console.error("Error processing chat message:", error);
+    console.error("CRITICAL API ERROR:", error);
     return NextResponse.json(
       { error: "Failed to process message" },
       { status: 500 }
     );
   }
-}
+}
+
+
+

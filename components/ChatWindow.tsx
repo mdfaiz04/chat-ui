@@ -5,7 +5,9 @@ import Message from "./Message";
 import InputArea from "./InputArea";
 import TypingIndicator from "./TypingIndicator";
 import Sidebar from "./Sidebar";
-import { Menu, ArrowLeft } from "lucide-react";
+import { Menu, ArrowLeft, Plus, PlusCircle } from "lucide-react";
+
+
 
 /**
  * MessageType defines the structure of a chat message
@@ -37,10 +39,43 @@ export default function ChatWindow() {
 
 
 
+  const [chatId, setChatId] = useState<string | null>(null); // Current session ID
+
   // ---------------- REFS ----------------
 
   const messagesEndRef = useRef<HTMLDivElement>(null); // Used for auto-scrolling
   const profileMenuRef = useRef<HTMLDivElement>(null); // Used for detecting outside clicks
+
+  /**
+   * Generates a new unique chat session
+   */
+  const handleNewChat = () => {
+    const newId = crypto.randomUUID();
+    setChatId(newId);
+    setMessages([]);
+    setIsChatOpen(false);
+  };
+
+  /**
+   * Specific function to load a chat session from Sidebar
+   */
+  const loadChat = async (id: string) => {
+    try {
+      setIsSidebarOpen(false);
+      setIsLoading(true);
+      const response = await fetch(`/api/messages?chatId=${id}`);
+      const data = await response.json();
+      if (response.ok) {
+        setMessages(data);
+        setChatId(id);
+        setIsChatOpen(true);
+      }
+    } catch (error) {
+      console.error("Failed to load chat session:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   /**
    * Scrolls chat to the latest message
@@ -59,9 +94,13 @@ export default function ChatWindow() {
    * Enforces LIGHT mode on first load as per requirements
    */
   useEffect(() => {
+    // Initial theme setup
     document.documentElement.classList.remove("dark");
     localStorage.setItem("theme", "light");
     setIsDarkMode(false);
+    
+    // Initialize first chatId
+    if (!chatId) setChatId(crypto.randomUUID());
   }, []);
 
   useEffect(() => {
@@ -77,9 +116,29 @@ export default function ChatWindow() {
 
 
   /**
+   * Clears all messages from DB and local state
+   */
+  const handleClearChat = async () => {
+    if (!window.confirm("Are you sure you want to clear all chat history?")) return;
+    
+    try {
+      const response = await fetch("/api/messages", { method: "DELETE" });
+      if (response.ok) {
+        setMessages([]);
+        setIsChatOpen(false);
+        setChatId(crypto.randomUUID()); // Reset with new ID
+      }
+    } catch (error) {
+      console.error("Failed to clear chat:", error);
+    }
+  };
+
+  /**
    * Closes profile menu when clicking outside of it
    */
+
   useEffect(() => {
+
     function handleClickOutside(event: MouseEvent) {
       if (
         profileMenuRef.current &&
@@ -100,15 +159,11 @@ export default function ChatWindow() {
    * Handles sending user message and receiving AI response
    */
   const handleSendMessage = async (content: string) => {
+    console.log("SENDING MESSAGE:", content);
     setIsChatOpen(true);
 
-    // Generate temporary unique ID
-    const tempId =
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : Date.now().toString() + Math.random();
+    const tempId = Date.now().toString() + Math.random();
 
-    // Create user message object
     const tempUserMessage: MessageType = {
       id: tempId,
       role: "user",
@@ -116,61 +171,49 @@ export default function ChatWindow() {
       timestamp: new Date(),
     };
 
-    // Add user message to UI immediately
+    // Update locally
     setMessages((prev) => [...prev, tempUserMessage]);
     setIsLoading(true);
 
     try {
-      // Send message to backend API
+      console.log("Calling API at /api/chat...");
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           message: content, 
-          model: selectedModel 
+          model: selectedModel,
+          chatId: chatId 
         }),
+
       });
 
-
       const data = await response.json();
+      console.log("API Response received:", data);
 
       if (!response.ok) throw new Error(data.error);
 
-      // Normalize AI response message
       const aiMessage: MessageType = {
         ...data.message,
-        id:
-          data.message.id ||
-          data.message._id ||
-          (typeof crypto !== "undefined" && crypto.randomUUID
-            ? crypto.randomUUID()
-            : Date.now().toString() + Math.random()),
+        id: data.message.id || Date.now().toString() + Math.random(),
       };
 
-      // Add AI response to chat
       setMessages((prev) => [...prev, aiMessage]);
 
     } catch (error: any) {
-      console.error("Chat API Error:", error);
-
-      // Show error message inside chat UI
+      console.error("Chat Window Error:", error);
       const errorMessage: MessageType = {
-        id:
-          typeof crypto !== "undefined" && crypto.randomUUID
-            ? crypto.randomUUID()
-            : Date.now().toString() + Math.random(),
+        id: Date.now().toString() + Math.random(),
         role: "assistant",
-        content: `⚠️ Sorry, I encountered an error: ${error.message || "Could not connect to server."
-          }`,
+        content: `⚠️ Error: ${error.message || "Something went wrong."}`,
         timestamp: new Date(),
       };
-
       setMessages((prev) => [...prev, errorMessage]);
-
     } finally {
-      setIsLoading(false); // Stop loading indicator
+      setIsLoading(false);
     }
   };
+
 
   // ---------------- UI RENDER ----------------
 
@@ -184,9 +227,32 @@ export default function ChatWindow() {
         <div className="flex items-center gap-2">
 
           {/* Sidebar Toggle Button */}
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-            <Menu className="w-5 h-5" />
+          <button 
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+          >
+            <Menu className="w-5 h-5 text-gray-500" />
           </button>
+
+          {/* Premium New Chat Button */}
+          <button
+            onClick={handleNewChat}
+            title="Start a new conversation"
+            className="flex items-center gap-2 px-3 py-1.5 md:px-5 md:py-2.5 
+                       rounded-full border border-gray-200 dark:border-zinc-700/50 
+                       bg-white dark:bg-zinc-800 shadow-sm
+                       hover:bg-gray-50 dark:hover:bg-zinc-700 
+                       hover:scale-105 active:scale-95
+                       hover:shadow-md hover:shadow-blue-500/10
+                       transition-all duration-200 group"
+          >
+            <PlusCircle className="w-4 h-4 md:w-5 md:h-5 text-blue-500 group-hover:rotate-90 transition-transform duration-300" />
+            <span className="text-xs md:text-sm font-semibold tracking-wide text-gray-700 dark:text-zinc-200 hidden sm:inline">
+              New Chat
+            </span>
+          </button>
+
+
 
           {/* Chat Back Button */}
           {isChatOpen && (
@@ -241,11 +307,21 @@ export default function ChatWindow() {
                   Account Details
                 </button>
                 <button
+                  onClick={() => {
+                    handleClearChat();
+                    setShowProfileMenu(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  Clear Chat History
+                </button>
+                <button
                   onClick={() => setShowProfileMenu(false)}
                   className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   Sign Out
                 </button>
+
               </div>
             )}
           </div>
@@ -327,7 +403,9 @@ export default function ChatWindow() {
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
+        onSelectChat={loadChat}
       />
+
     </div>
   );
 }
