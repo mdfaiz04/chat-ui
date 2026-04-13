@@ -35,21 +35,55 @@ function delay(ms: number): Promise<void> {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { content } = body;
+    const { message, model } = body;
+
+    // Use content if message is not provided (for backward compatibility if needed, but following requirement #2)
+    const chatContent = message || body.content;
+
+    // 6. Add Console Logs for Testing
+    console.log("Selected Model:", model);
 
     // Validate — make sure the message isn't empty and is a string
-    if (!content || typeof content !== "string" || content.trim() === "") {
+    if (!chatContent || typeof chatContent !== "string" || chatContent.trim() === "") {
       return NextResponse.json(
         { error: "Message content is required" },
         { status: 400 }
       );
     }
 
-    // Simulate the bot "thinking" with a 1.5 second delay
-    await delay(1500);
+    // 3. Add Future API Structure & 7. Safety (Fallback if no API key)
+    const useRealAI = process.env.USE_REAL_AI === "true";
+    let botReply = "";
 
-    // Generate a random mock bot response
-    const botReply = getRandomResponse();
+    if (useRealAI) {
+      // 5. Add Model Routing Logic (placeholder only)
+      if (model === "Gemini 3 Flash") {
+        if (process.env.GEMINI_API_KEY) {
+          // Future real Gemini API logic here
+          // botReply = await callGeminiAPI(chatContent);
+        }
+      } else if (model === "Claude Sonnet") {
+        if (process.env.CLAUDE_API_KEY) {
+          // Future real Claude API logic here
+          // botReply = await callClaudeAPI(chatContent);
+        }
+      } else if (model === "GPT-OSS 120B") {
+        if (process.env.OPENAI_API_KEY) {
+          // Future real OpenAI API logic here
+          // botReply = await callOpenAIAPI(chatContent);
+        }
+      }
+
+      // If a real API was supposed to be used but failed or wasn't implemented yet, 
+      // botReply will be empty. We'll fall back to mock.
+    }
+
+    // Fallback to mock response if not using real AI or if real AI logic didn't return a reply
+    if (!botReply) {
+      // Simulate the bot "thinking" with a 1.5 second delay
+      await delay(1500);
+      botReply = getRandomResponse();
+    }
     
     // Generate an ID for the mock message
     const mockId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() + Math.random();
@@ -75,4 +109,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}

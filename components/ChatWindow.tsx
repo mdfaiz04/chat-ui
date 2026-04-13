@@ -11,11 +11,13 @@ import { Menu, ArrowLeft } from "lucide-react";
  * MessageType defines the structure of a chat message
  */
 interface MessageType {
-  id: string;
+  id: string | number;
   role: "user" | "assistant"; // Who sent the message
   content: string;            // Message text
   timestamp: Date | string;   // Time of message
+  image?: string;             // Optional image URL
 }
+
 
 /**
  * @component ChatWindow
@@ -27,10 +29,13 @@ export default function ChatWindow() {
 
   const [messages, setMessages] = useState<MessageType[]>([]); // Stores chat history
   const [isLoading, setIsLoading] = useState(false);           // Tracks API loading state
-  const [isDarkMode, setIsDarkMode] = useState(true);          // Theme toggle
+  const [isDarkMode, setIsDarkMode] = useState(false);          // Theme toggle (default to light)
   const [showProfileMenu, setShowProfileMenu] = useState(false); // Profile dropdown visibility
   const [isChatOpen, setIsChatOpen] = useState(false);         // Controls welcome vs chat UI
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);   // Sidebar visibility
+  const [selectedModel, setSelectedModel] = useState("Gemini 3 Flash"); // Selected AI model
+
+
 
   // ---------------- REFS ----------------
 
@@ -51,14 +56,25 @@ export default function ChatWindow() {
 
   /**
    * Handles dark mode toggle by adding/removing 'dark' class
+   * Enforces LIGHT mode on first load as per requirements
    */
+  useEffect(() => {
+    document.documentElement.classList.remove("dark");
+    localStorage.setItem("theme", "light");
+    setIsDarkMode(false);
+  }, []);
+
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
     } else {
       document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
     }
   }, [isDarkMode]);
+
+
 
   /**
    * Closes profile menu when clicking outside of it
@@ -109,8 +125,12 @@ export default function ChatWindow() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ 
+          message: content, 
+          model: selectedModel 
+        }),
       });
+
 
       const data = await response.json();
 
@@ -178,16 +198,36 @@ export default function ChatWindow() {
             </button>
           )}
 
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Nexus AI</h1>
+          <div className="flex flex-col">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">Nexus AI</h1>
+          </div>
+
+
         </div>
 
         {/* RIGHT SIDE: Theme + Profile */}
         <div className="flex items-center gap-4">
 
-          {/* Theme Toggle */}
-          <button onClick={() => setIsDarkMode(!isDarkMode)}>
-            {isDarkMode ? "☀️" : "🌙"}
+          {/* Premium Theme Toggle Button */}
+          <button 
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className="flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 dark:border-zinc-700/50 
+                       bg-white/70 dark:bg-zinc-800/70 backdrop-blur-md 
+                       shadow-sm hover:shadow-md hover:shadow-blue-500/20 hover:scale-105 
+                       transition-all duration-300 text-gray-700 dark:text-zinc-200"
+          >
+            {/* ICON - Instant change with rotation effect */}
+            <span className="text-base transition-transform duration-300">
+              {isDarkMode ? "☀️" : "🌙"}
+            </span>
+
+            {/* TEXT - Dynamic Label */}
+            <span className="text-xs font-semibold whitespace-nowrap hidden sm:inline">
+              {isDarkMode ? "Light Mode" : "Dark Mode"}
+            </span>
           </button>
+
+
 
           {/* Profile Menu */}
           <div ref={profileMenuRef} className="relative">
@@ -286,7 +326,12 @@ export default function ChatWindow() {
           <InputArea
             onSendMessage={handleSendMessage}
             isLoading={isLoading}
+            selectedModel={selectedModel}
+            setSelectedModel={setSelectedModel}
+            setMessages={setMessages}
           />
+
+
         </div>
       </div>
 

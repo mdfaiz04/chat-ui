@@ -1,5 +1,7 @@
+"use client";
+
 import { useState } from "react";
-import { Search, Trash, X } from "lucide-react";
+import { Search, Trash, X, History } from "lucide-react";
 
 /**
  * Props for Sidebar component
@@ -11,41 +13,30 @@ interface SidebarProps {
 
 /**
  * @component Sidebar
- * @desc Displays chat history with search and delete functionality
+ * @desc Displays chat history with search and delete functionality in a premium UI
  */
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   // ---------------- STATE ----------------
 
-  // Stores chat history (can later be replaced with API data)
   const [history, setHistory] = useState([
-    { id: "1", title: "Project Explanation Guide", time: "07:41" },
-    { id: "2", title: "Next.js Setup", time: "07:38" },
-    { id: "3", title: "AI Chat UI Build", time: "07:30" },
+    { id: "1", title: "Project Explanation Guide", time: "07:41 AM" },
+    { id: "2", title: "Next.js Setup", time: "Yesterday" },
+    { id: "3", title: "AI Chat UI Build", time: "2 days ago" },
   ]);
 
-  // Stores search input value
   const [searchQuery, setSearchQuery] = useState("");
 
   // ---------------- DERIVED STATE ----------------
 
-  /**
-   * Filters chat history based on search query (case-insensitive)
-   */
   const filteredHistory = history.filter((chat) =>
     chat.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // ---------------- HANDLERS ----------------
 
-  /**
-   * Deletes a chat item from history
-   * - Stops event bubbling to prevent parent click triggers
-   * - Confirms before deletion
-   */
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-
     if (window.confirm("Delete this chat?")) {
       setHistory((prev) => prev.filter((item) => item.id !== id));
     }
@@ -59,73 +50,72 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity"
-          onClick={onClose} // Clicking outside closes sidebar
+          onClick={onClose}
         ></div>
       )}
 
-      {/* SIDEBAR CONTAINER */}
+      {/* SIDEBAR CONTAINER - Glassmorphism & Theme-Aware */}
       <div
-        className={`fixed top-0 left-0 h-full w-full sm:w-80 sm:max-w-sm bg-gray-900 border-r border-gray-800 shadow-xl z-50 transform transition-transform duration-300 ${isOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
+        className={`fixed top-0 left-0 h-full w-[280px] sm:w-72 
+                   bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl
+                   border-r border-gray-200 dark:border-zinc-700
+                   shadow-2xl z-50 transform transition-all duration-300 ease-in-out
+                   ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <div className="flex flex-col h-full text-gray-100">
+        <div className="flex flex-col h-full text-gray-900 dark:text-gray-100">
 
-          {/* HEADER */}
-          <div className="flex justify-between items-center p-4 border-b border-gray-800">
-            <h2 className="font-semibold text-lg">History</h2>
+          {/* HEADER UPGRADE */}
+          <div className="flex justify-between items-center p-4 border-b border-gray-100 dark:border-zinc-800">
+            <h2 className="font-bold text-lg flex items-center gap-2">
+              <History className="w-5 h-5 text-blue-500" />
+              History
+            </h2>
 
-            {/* Close Button */}
             <button
               onClick={onClose}
-              className="p-1 rounded-md hover:bg-gray-800 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
             >
-              <X className="w-5 h-5 text-gray-400" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* SEARCH INPUT */}
+          {/* SEARCH BAR (MODERN) */}
           <div className="p-4">
-            <div className="relative">
-
-              {/* Search Icon */}
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-
-              {/* Input Field */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 dark:bg-zinc-800/50 border border-transparent focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-500/10 transition-all duration-200">
+              <Search className="w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search chats..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)} // Update search query
-                className="w-full bg-gray-800 text-sm text-gray-100 rounded-lg pl-9 pr-4 py-2 outline-none focus:ring-1 focus:ring-gray-600 transition-all placeholder:text-gray-500"
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-transparent text-sm outline-none placeholder:text-gray-500 dark:placeholder:text-zinc-500 font-medium"
               />
             </div>
           </div>
 
-          {/* HISTORY LIST */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
+          {/* HISTORY LIST (UPGRADED UI) */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1 messages-scroll">
 
             {filteredHistory.length > 0 ? (
               filteredHistory.map((chat) => (
-
-                // Individual chat item
                 <div
                   key={chat.id}
-                  className="flex justify-between items-center group cursor-pointer rounded-xl p-3 hover:bg-gray-800 transition-all duration-200"
+                  className="flex justify-between items-center group cursor-pointer 
+                             rounded-xl p-3 hover:bg-gray-50 dark:hover:bg-zinc-800/50 
+                             hover:scale-[1.02] active:scale-95 transition-all duration-200"
                 >
-                  {/* Chat Info */}
                   <div className="flex flex-col truncate pr-2">
-                    <span className="text-sm font-medium truncate">
+                    <span className="text-sm font-semibold truncate group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">
                       {chat.title}
                     </span>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-zinc-500 mt-0.5">
                       {chat.time}
                     </span>
                   </div>
 
-                  {/* Delete Button */}
                   <button
                     onClick={(e) => handleDelete(chat.id, e)}
-                    className="p-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 text-red-400 hover:text-red-600 hover:bg-red-500/10 rounded-lg transition-all duration-200"
+                    className="p-1.5 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all duration-200"
                     title="Delete chat"
                   >
                     <Trash className="w-4 h-4" />
@@ -133,10 +123,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 </div>
               ))
             ) : (
-              // Empty state when no chats found
-              <div className="flex flex-col items-center justify-center h-20">
-                <span className="text-gray-400 text-sm">
-                  No chats found
+              <div className="flex flex-col items-center justify-center p-8 text-center">
+                <div className="w-12 h-12 bg-gray-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-3">
+                  <Search className="w-5 h-5 text-gray-400" />
+                </div>
+                <span className="text-gray-500 dark:text-zinc-500 text-xs font-medium">
+                  No matches found
                 </span>
               </div>
             )}

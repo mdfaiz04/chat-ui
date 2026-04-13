@@ -7,11 +7,13 @@ interface MessageProps {
   role: "user" | "assistant";
   content: string;
   timestamp: Date | string;
+  image?: string;
 }
 
-export default function Message({ role, content, timestamp }: MessageProps) {
+export default function Message({ role, content, timestamp, image }: MessageProps) {
 
   // Track if this specific message was just copied
+
   // When true, we show "Copied!" instead of the copy icon
   const [copied, setCopied] = useState(false);
 
@@ -64,7 +66,13 @@ export default function Message({ role, content, timestamp }: MessageProps) {
               : "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-bl-none"
               }`}
           >
+            {image && (
+              <div className="mb-2 overflow-hidden rounded-lg border border-gray-100 dark:border-zinc-700">
+                <img src={image} alt="Uploaded content" className="max-w-full h-auto object-cover max-h-64" />
+              </div>
+            )}
             {content}
+
           </div>
 
           {/* Copy button — hidden by default, appears on hover */}
