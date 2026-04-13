@@ -203,7 +203,7 @@ export default function ChatWindow() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 1 }}
-      className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-cyan-50 dark:from-[#0a0f1f] dark:via-[#05070d] dark:to-black text-gray-900 dark:text-white transition-all duration-500 ease-in-out overflow-hidden relative"
+      className="h-[100dvh] flex flex-col bg-gradient-to-br from-blue-50 via-white to-cyan-50 dark:from-[#0a0f1f] dark:via-[#05070d] dark:to-black text-gray-900 dark:text-white transition-all duration-500 ease-in-out overflow-hidden relative"
     >
 
       {/* DYNAMIC BACKGROUND BLUR EFFECTS */}
@@ -213,7 +213,7 @@ export default function ChatWindow() {
 
 
       {/* HEADER SECTION - Fixed at top */}
-      <header className="flex-shrink-0 justify-between items-center px-4 md:px-6 py-3 border-b border-gray-200/50 dark:border-white/5 shadow-sm z-30 backdrop-blur-md bg-white/60 dark:bg-black/40 sticky top-0 flex">
+      <header className="shrink-0 justify-between items-center px-4 md:px-6 py-3 border-b border-gray-200/50 dark:border-white/5 shadow-sm z-30 backdrop-blur-md bg-white/60 dark:bg-black/40 sticky top-0 flex">
         <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-blue-500/20 to-transparent shadow-[0_1px_10px_rgba(59,130,246,0.3)]" />
 
         {/* LEFT SIDE: Menu + Title */}
@@ -286,11 +286,8 @@ export default function ChatWindow() {
       </header>
 
       {/* SCROLLABLE CONTENT AREA */}
-      <main 
-        className="flex-1 overflow-y-auto w-full relative custom-scrollbar messages-scroll flex flex-col"
-        style={{ scrollPaddingBottom: '120px' }}
-      >
-        <div className={`flex-1 flex flex-col w-full h-full min-h-[100vh] ${isChatOpen ? 'max-w-4xl mx-auto px-4 pt-10 pb-28 md:pb-4' : ''}`}>
+      <main className="flex-1 overflow-y-auto w-full relative custom-scrollbar messages-scroll flex flex-col">
+        <div className={`flex-1 flex flex-col w-full h-full min-h-0 ${isChatOpen ? 'max-w-4xl mx-auto px-4 py-4' : ''}`}>
 
         {!isChatOpen ? (
           // MINIMAL INPUT-FOCUSED HERO LAYOUT
@@ -373,8 +370,8 @@ export default function ChatWindow() {
 
       {isChatOpen && (
         <footer 
-          className="flex-shrink-0 z-30 w-full max-w-4xl mx-auto px-4 fixed bottom-4 left-0 right-0 md:static bg-transparent md:bg-gray-50 md:dark:bg-transparent md:py-4"
-          style={{ bottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+          className="shrink-0 w-full max-w-4xl mx-auto px-4 pt-2 bg-transparent"
+          style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
         >
           <InputArea
             onSendMessage={handleSendMessage}
