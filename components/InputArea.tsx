@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Mic, Send, Plus, ChevronDown, Image as ImageIcon, File as FileIcon } from "lucide-react";
+import { motion } from "framer-motion";
 
 /**
  * Props for InputArea component
@@ -160,7 +161,11 @@ export default function InputArea({
   // ---------------- UI ----------------
 
   return (
-    <div className="w-full max-w-3xl mx-auto bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700/50 rounded-2xl p-2 shadow-lg dark:shadow-2xl transition-all duration-300">
+    <motion.div 
+      whileHover={{ y: -2 }}
+      transition={{ duration: 0.3 }}
+      className="w-full max-w-3xl mx-auto bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border border-gray-200 dark:border-zinc-700/50 rounded-2xl p-2 shadow-xl focus-within:shadow-2xl focus-within:border-blue-500/30 transition-all duration-300 group"
+    >
 
       {/* TEXTAREA INPUT */}
       <textarea
@@ -168,7 +173,7 @@ export default function InputArea({
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={isListening ? "Listening..." : "Ask anything..."}
+        placeholder="Ask anything..."
         rows={1}
         disabled={isLoading}
         className="w-full bg-transparent outline-none text-gray-900 dark:text-zinc-100 px-3 py-2 resize-none max-h-[150px] overflow-y-auto leading-relaxed placeholder-gray-400 dark:placeholder-zinc-500 font-medium"
@@ -191,7 +196,7 @@ export default function InputArea({
 
             {/* UPLOAD DROPDOWN */}
             {openUpload && (
-              <div className="absolute bottom-full mb-2 left-0 w-44 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-fadeIn">
+              <div className="absolute bottom-full mb-2 left-0 w-44 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-2xl z-50 overflow-hidden">
                 <div className="p-1">
                   <label className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded-lg cursor-pointer transition-all">
                     <ImageIcon className="w-4 h-4" />
@@ -227,7 +232,7 @@ export default function InputArea({
             </button>
 
             {openModel && (
-              <div className="absolute bottom-full mb-2 right-0 w-48 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-fadeIn">
+              <div className="absolute bottom-full mb-2 right-0 w-48 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-2xl z-50 overflow-hidden">
                 <div className="p-1">
                   {["Gemini 3 Flash", "Claude Sonnet", "GPT-OSS 120B"].map((model) => (
                     <button
@@ -277,9 +282,6 @@ export default function InputArea({
         </div>
 
       </div>
-    </div>
+    </motion.div>
   );
 }
-
-
-

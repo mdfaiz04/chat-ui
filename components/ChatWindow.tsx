@@ -5,9 +5,8 @@ import Message from "./Message";
 import InputArea from "./InputArea";
 import TypingIndicator from "./TypingIndicator";
 import Sidebar from "./Sidebar";
-import { Menu, ArrowLeft, Plus, PlusCircle } from "lucide-react";
-
-
+import { Menu } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 /**
  * MessageType defines the structure of a chat message
@@ -19,7 +18,6 @@ interface MessageType {
   timestamp: Date | string;   // Time of message
   image?: string;             // Optional image URL
 }
-
 
 /**
  * @component ChatWindow
@@ -36,10 +34,8 @@ export default function ChatWindow() {
   const [isChatOpen, setIsChatOpen] = useState(false);         // Controls welcome vs chat UI
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);   // Sidebar visibility
   const [selectedModel, setSelectedModel] = useState("Gemini 3 Flash"); // Selected AI model
-
-
-
   const [chatId, setChatId] = useState<string | null>(null); // Current session ID
+  const [mounted, setMounted] = useState(false); // Hydration fix
 
   // ---------------- REFS ----------------
 
@@ -94,7 +90,8 @@ export default function ChatWindow() {
    * Enforces LIGHT mode on first load as per requirements
    */
   useEffect(() => {
-    // Initial theme setup
+    setMounted(true);
+    // Initial theme setup (LIGHT mode only on load)
     document.documentElement.classList.remove("dark");
     localStorage.setItem("theme", "light");
     setIsDarkMode(false);
@@ -112,8 +109,6 @@ export default function ChatWindow() {
       localStorage.setItem("theme", "light");
     }
   }, [isDarkMode]);
-
-
 
   /**
    * Clears all messages from DB and local state
@@ -136,9 +131,7 @@ export default function ChatWindow() {
   /**
    * Closes profile menu when clicking outside of it
    */
-
   useEffect(() => {
-
     function handleClickOutside(event: MouseEvent) {
       if (
         profileMenuRef.current &&
@@ -149,17 +142,13 @@ export default function ChatWindow() {
     }
 
     document.addEventListener("mousedown", handleClickOutside);
-
-    // Cleanup event listener
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   /**
    * Handles sending user message and receiving AI response
    */
   const handleSendMessage = async (content: string) => {
-    console.log("SENDING MESSAGE:", content);
     setIsChatOpen(true);
 
     const tempId = Date.now().toString() + Math.random();
@@ -171,12 +160,10 @@ export default function ChatWindow() {
       timestamp: new Date(),
     };
 
-    // Update locally
     setMessages((prev) => [...prev, tempUserMessage]);
     setIsLoading(true);
 
     try {
-      console.log("Calling API at /api/chat...");
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -185,12 +172,9 @@ export default function ChatWindow() {
           model: selectedModel,
           chatId: chatId
         }),
-
       });
 
       const data = await response.json();
-      console.log("API Response received:", data);
-
       if (!response.ok) throw new Error(data.error);
 
       const aiMessage: MessageType = {
@@ -214,45 +198,32 @@ export default function ChatWindow() {
     }
   };
 
-
-  // ---------------- UI RENDER ----------------
-
   return (
-    <div className="h-[100dvh] flex flex-col bg-gray-50 dark:bg-gradient-to-b dark:from-[#0f172a] dark:to-[#020617] text-gray-900 dark:text-white transition-colors duration-300 overflow-hidden">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 1 }}
+      className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-cyan-50 dark:from-[#0a0f1f] dark:via-[#05070d] dark:to-black text-gray-900 dark:text-white transition-all duration-500 ease-in-out overflow-hidden relative"
+    >
+
+      {/* DYNAMIC BACKGROUND BLUR EFFECTS */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-500/10 dark:bg-blue-600/10 blur-[130px] rounded-full -z-10 animate-pulse" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-500/10 dark:bg-purple-600/10 blur-[130px] rounded-full -z-10 animate-pulse" style={{ animationDelay: '3s' }} />
+      <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-cyan-500/5 dark:bg-cyan-600/10 blur-[100px] rounded-full -z-10" />
+
 
       {/* HEADER SECTION - Fixed at top */}
-      <header className="flex-shrink-0 justify-between items-center px-4 md:px-6 py-3 border-b border-gray-200 dark:border-white/10 shadow-sm z-30 bg-white dark:bg-[#0f172a] dark:backdrop-blur-xl flex">
+      <header className="flex-shrink-0 justify-between items-center px-4 md:px-6 py-3 border-b border-gray-200/50 dark:border-white/5 shadow-sm z-30 backdrop-blur-md bg-white/60 dark:bg-black/40 sticky top-0 flex">
+        <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-blue-500/20 to-transparent shadow-[0_1px_10px_rgba(59,130,246,0.3)]" />
 
         {/* LEFT SIDE: Menu + Title */}
         <div className="flex items-center gap-2">
-
-          {/* Sidebar Toggle Button */}
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
           >
             <Menu className="w-5 h-5 text-gray-500" />
           </button>
-
-          {/* Title - Only shown during active chat to avoid duplication on home page */}
-          {isChatOpen && (
-            <div className="flex flex-col">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white leading-tight ml-2">Nexus AI</h1>
-            </div>
-          )}
-
-
-
-          {/* Chat Back Button */}
-          {isChatOpen && (
-            <button
-              onClick={() => setIsChatOpen(false)}
-              className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-all duration-200 text-gray-600 dark:text-white/80"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-          )}
-
           <div className="flex flex-col">
             <h1 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">Nexus AI</h1>
           </div>
@@ -261,15 +232,14 @@ export default function ChatWindow() {
         {/* RIGHT SIDE: Theme + Profile */}
         <div className="flex items-center gap-4">
 
-          {/* Premium Theme Toggle Button */}
+          {/* Theme Toggle Button */}
           <button
             onClick={() => setIsDarkMode(!isDarkMode)}
             className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-gray-200 dark:border-zinc-700/50 
                        bg-white/70 dark:bg-zinc-800/70 backdrop-blur-md 
-                       shadow-sm hover:shadow-md hover:shadow-blue-500/20 hover:scale-105 
-                       transition-all duration-300 text-gray-700 dark:text-zinc-200"
+                       shadow-sm hover:translate-y-[-1px] transition-all duration-300 text-gray-700 dark:text-zinc-200"
           >
-            <span className="text-base transition-transform duration-300">
+            <span className="text-base">
               {isDarkMode ? "☀️" : "🌙"}
             </span>
             <span className="text-xs font-semibold whitespace-nowrap hidden sm:inline">
@@ -286,7 +256,6 @@ export default function ChatWindow() {
               AJ
             </button>
 
-            {/* Dropdown */}
             {showProfileMenu && (
               <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
                 <button
@@ -310,7 +279,6 @@ export default function ChatWindow() {
                 >
                   Sign Out
                 </button>
-
               </div>
             )}
           </div>
@@ -318,29 +286,72 @@ export default function ChatWindow() {
       </header>
 
       {/* SCROLLABLE CONTENT AREA */}
-      <main className="flex-1 overflow-y-auto w-full relative custom-scrollbar messages-scroll">
-        <div className="max-w-3xl mx-auto px-4 pt-10 pb-32 md:pb-10 w-full flex flex-col h-full min-h-0">
+      <main className="flex-1 overflow-y-auto w-full relative custom-scrollbar messages-scroll flex flex-col">
+        <div className={`flex-1 flex flex-col w-full h-full min-h-0 ${isChatOpen ? 'max-w-4xl mx-auto px-4 pt-10 pb-32 md:pb-10' : ''}`}>
 
-          {/* Welcome Screen OR Chat Messages */}
-          {!isChatOpen ? (
-            <div className="flex flex-col items-center justify-center py-12 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-3xl shadow-sm dark:shadow-2xl dark:backdrop-blur-xl p-6 md:p-8">
+        {!isChatOpen ? (
+          // MINIMAL INPUT-FOCUSED HERO LAYOUT
+          <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+            
+            {/* Center Section: Heading & Subtext */}
+            <div className="flex flex-col items-center text-center max-w-4xl w-full">
+              <motion.h2 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.8 }}
+                className="text-5xl md:text-7xl font-extrabold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent leading-tight tracking-tight mb-4"
+              >
+                Welcome to Nexus AI
+              </motion.h2>
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3, duration: 0.8 }}
+                className="text-gray-500 dark:text-gray-400 text-lg md:text-xl font-medium max-w-2xl px-4 mb-6"
+              >
+                The next generation of intelligent assistance. Experience the future of conversation.
+              </motion.p>
 
-              {/* Gradient Heading */}
-              <h2 className="text-3xl md:text-4xl font-extrabold mb-3 text-center text-gray-900 dark:text-white leading-tight">
-                Welcome to{" "}
-                <span className="bg-gradient-to-r from-blue-500 to-cyan-500 dark:from-blue-400 dark:to-cyan-400 bg-clip-text text-transparent">
-                  Nexus AI
-                </span>
-              </h2>
-              <p className="text-gray-500 dark:text-gray-400 mb-8 text-center text-sm md:text-base">
-                Choose a mode to get started
-              </p>
-
-              {/* 2×2 Feature Card Grid removed and moved to sidebar */}
+              {/* Centered Input Area - Primary Focus */}
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.5, duration: 0.8 }}
+                className="w-full max-w-3xl mt-8"
+              >
+                <InputArea
+                  onSendMessage={handleSendMessage}
+                  isLoading={isLoading}
+                  selectedModel={selectedModel}
+                  setSelectedModel={setSelectedModel}
+                  setMessages={setMessages}
+                />
+              </motion.div>
             </div>
-          ) : (
+
+            {/* Subtle Particles Overlay */}
+            {mounted && (
+              <div className="absolute inset-0 pointer-events-none -z-10 opacity-20 dark:opacity-30">
+                {[...Array(15)].map((_, i) => (
+                  <div 
+                    key={i} 
+                    className="absolute rounded-full bg-blue-400 dark:bg-blue-500 animate-float"
+                    style={{
+                      width: Math.random() * 4 + 2 + 'px',
+                      height: Math.random() * 4 + 2 + 'px',
+                      left: Math.random() * 100 + '%',
+                      top: Math.random() * 100 + '%',
+                      animationDuration: Math.random() * 10 + 10 + 's',
+                      animationDelay: Math.random() * 5 + 's',
+                      opacity: Math.random() * 0.5 + 0.1
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
             <div className="flex flex-col gap-4">
-              {/* Render Messages */}
               {messages.map((msg, index) => (
                 <Message
                   key={msg.id || index}
@@ -350,26 +361,24 @@ export default function ChatWindow() {
                   image={msg.image}
                 />
               ))}
-
-              {/* Typing Indicator */}
               {isLoading && <TypingIndicator />}
-
               <div ref={messagesEndRef} />
             </div>
           )}
         </div>
       </main>
 
-      {/* INPUT AREA — Fixed/Sticky at the bottom */}
-      <footer className="flex-shrink-0 z-30 w-full max-w-3xl mx-auto px-4 py-4 sticky bottom-0 bg-gray-50 dark:bg-transparent">
-        <InputArea
-          onSendMessage={handleSendMessage}
-          isLoading={isLoading}
-          selectedModel={selectedModel}
-          setSelectedModel={setSelectedModel}
-          setMessages={setMessages}
-        />
-      </footer>
+      {isChatOpen && (
+        <footer className="flex-shrink-0 z-30 w-full max-w-4xl mx-auto px-4 py-4 sticky bottom-0 bg-gray-50 dark:bg-transparent">
+          <InputArea
+            onSendMessage={handleSendMessage}
+            isLoading={isLoading}
+            selectedModel={selectedModel}
+            setSelectedModel={setSelectedModel}
+            setMessages={setMessages}
+          />
+        </footer>
+      )}
 
       {/* SIDEBAR */}
       <Sidebar
@@ -380,6 +389,6 @@ export default function ChatWindow() {
         onNewChat={handleNewChat}
       />
 
-    </div>
+    </motion.div>
   );
 }
