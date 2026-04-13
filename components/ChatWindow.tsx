@@ -98,7 +98,7 @@ export default function ChatWindow() {
     document.documentElement.classList.remove("dark");
     localStorage.setItem("theme", "light");
     setIsDarkMode(false);
-    
+
     // Initialize first chatId
     if (!chatId) setChatId(crypto.randomUUID());
   }, []);
@@ -120,7 +120,7 @@ export default function ChatWindow() {
    */
   const handleClearChat = async () => {
     if (!window.confirm("Are you sure you want to clear all chat history?")) return;
-    
+
     try {
       const response = await fetch("/api/messages", { method: "DELETE" });
       if (response.ok) {
@@ -180,10 +180,10 @@ export default function ChatWindow() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          message: content, 
+        body: JSON.stringify({
+          message: content,
           model: selectedModel,
-          chatId: chatId 
+          chatId: chatId
         }),
 
       });
@@ -227,30 +227,19 @@ export default function ChatWindow() {
         <div className="flex items-center gap-2">
 
           {/* Sidebar Toggle Button */}
-          <button 
+          <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
           >
             <Menu className="w-5 h-5 text-gray-500" />
           </button>
 
-          {/* Premium New Chat Button */}
-          <button
-            onClick={handleNewChat}
-            title="Start a new conversation"
-            className="flex items-center gap-2 px-3 py-1.5 md:px-5 md:py-2.5 
-                       rounded-full border border-gray-200 dark:border-zinc-700/50 
-                       bg-white dark:bg-zinc-800 shadow-sm
-                       hover:bg-gray-50 dark:hover:bg-zinc-700 
-                       hover:scale-105 active:scale-95
-                       hover:shadow-md hover:shadow-blue-500/10
-                       transition-all duration-200 group"
-          >
-            <PlusCircle className="w-4 h-4 md:w-5 md:h-5 text-blue-500 group-hover:rotate-90 transition-transform duration-300" />
-            <span className="text-xs md:text-sm font-semibold tracking-wide text-gray-700 dark:text-zinc-200 hidden sm:inline">
-              New Chat
-            </span>
-          </button>
+          {/* Title - Only shown during active chat to avoid duplication on home page */}
+          {isChatOpen && (
+            <div className="flex flex-col">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white leading-tight ml-2">Nexus AI</h1>
+            </div>
+          )}
 
 
 
@@ -273,7 +262,7 @@ export default function ChatWindow() {
         <div className="flex items-center gap-4">
 
           {/* Premium Theme Toggle Button */}
-          <button 
+          <button
             onClick={() => setIsDarkMode(!isDarkMode)}
             className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-gray-200 dark:border-zinc-700/50 
                        bg-white/70 dark:bg-zinc-800/70 backdrop-blur-md 
@@ -347,24 +336,7 @@ export default function ChatWindow() {
                 Choose a mode to get started
               </p>
 
-              {/* 2×2 Feature Card Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-                {[
-                  { icon: "✨", label: "Chat & Brainstorm",    prompt: "Chat" },
-                  { icon: "🔍", label: "Research & Summarize", prompt: "Research" },
-                  { icon: "💻", label: "Code & Develop",       prompt: "Code" },
-                  { icon: "🎨", label: "Create Images",        prompt: "Images" },
-                ].map((item, index) => (
-                  <div
-                    key={index}
-                    onClick={() => handleSendMessage(item.prompt)}
-                    className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-800 dark:text-white p-4 rounded-2xl shadow-md transition-all duration-200 cursor-pointer flex items-center gap-3 select-none"
-                  >
-                    <span className="text-xl md:text-2xl">{item.icon}</span>
-                    <span className="text-sm md:text-base font-semibold">{item.label}</span>
-                  </div>
-                ))}
-              </div>
+              {/* 2×2 Feature Card Grid removed and moved to sidebar */}
             </div>
           ) : (
             <div className="flex flex-col gap-4">
@@ -404,6 +376,8 @@ export default function ChatWindow() {
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         onSelectChat={loadChat}
+        onSendMessage={handleSendMessage}
+        onNewChat={handleNewChat}
       />
 
     </div>
