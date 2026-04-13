@@ -175,10 +175,10 @@ export default function ChatWindow() {
   // ---------------- UI RENDER ----------------
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-gray-50 dark:bg-gradient-to-b dark:from-[#0f172a] dark:to-[#020617] text-gray-900 dark:text-white transition-colors duration-300">
+    <div className="h-[100dvh] flex flex-col bg-gray-50 dark:bg-gradient-to-b dark:from-[#0f172a] dark:to-[#020617] text-gray-900 dark:text-white transition-colors duration-300 overflow-hidden">
 
-      {/* HEADER SECTION */}
-      <div className="flex justify-between items-center px-4 md:px-6 py-3 border-b border-gray-200 dark:border-white/10 shadow-sm sticky top-0 z-20 bg-white dark:bg-transparent dark:backdrop-blur-xl">
+      {/* HEADER SECTION - Fixed at top */}
+      <header className="flex-shrink-0 justify-between items-center px-4 md:px-6 py-3 border-b border-gray-200 dark:border-white/10 shadow-sm z-30 bg-white dark:bg-[#0f172a] dark:backdrop-blur-xl flex">
 
         {/* LEFT SIDE: Menu + Title */}
         <div className="flex items-center gap-2">
@@ -201,8 +201,6 @@ export default function ChatWindow() {
           <div className="flex flex-col">
             <h1 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">Nexus AI</h1>
           </div>
-
-
         </div>
 
         {/* RIGHT SIDE: Theme + Profile */}
@@ -211,23 +209,18 @@ export default function ChatWindow() {
           {/* Premium Theme Toggle Button */}
           <button 
             onClick={() => setIsDarkMode(!isDarkMode)}
-            className="flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 dark:border-zinc-700/50 
+            className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-gray-200 dark:border-zinc-700/50 
                        bg-white/70 dark:bg-zinc-800/70 backdrop-blur-md 
                        shadow-sm hover:shadow-md hover:shadow-blue-500/20 hover:scale-105 
                        transition-all duration-300 text-gray-700 dark:text-zinc-200"
           >
-            {/* ICON - Instant change with rotation effect */}
             <span className="text-base transition-transform duration-300">
               {isDarkMode ? "☀️" : "🌙"}
             </span>
-
-            {/* TEXT - Dynamic Label */}
             <span className="text-xs font-semibold whitespace-nowrap hidden sm:inline">
               {isDarkMode ? "Light Mode" : "Dark Mode"}
             </span>
           </button>
-
-
 
           {/* Profile Menu */}
           <div ref={profileMenuRef} className="relative">
@@ -257,83 +250,78 @@ export default function ChatWindow() {
             )}
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* CENTERED CONTENT WRAPPER */}
-      <div className="flex flex-col flex-1 max-w-3xl mx-auto mt-10 px-4 w-full">
+      {/* SCROLLABLE CONTENT AREA */}
+      <main className="flex-1 overflow-y-auto w-full relative custom-scrollbar messages-scroll">
+        <div className="max-w-3xl mx-auto px-4 pt-10 pb-32 md:pb-10 w-full flex flex-col h-full min-h-0">
 
-        {/* Welcome Screen OR Chat Messages */}
-        {!isChatOpen ? (
-          <div className="flex flex-col items-center justify-center flex-1 py-16 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-3xl shadow-sm dark:shadow-2xl dark:backdrop-blur-xl p-8">
+          {/* Welcome Screen OR Chat Messages */}
+          {!isChatOpen ? (
+            <div className="flex flex-col items-center justify-center py-12 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-3xl shadow-sm dark:shadow-2xl dark:backdrop-blur-xl p-6 md:p-8">
 
-            {/* Gradient Heading */}
-            <h2 className="text-4xl font-extrabold mb-3 text-center text-gray-900 dark:text-white">
-              Welcome to{" "}
-              <span className="bg-gradient-to-r from-blue-500 to-cyan-500 dark:from-blue-400 dark:to-cyan-400 bg-clip-text text-transparent">
-                Nexus AI
-              </span>
-            </h2>
-            <p className="text-gray-500 dark:text-gray-400 mb-8 text-center text-sm">
-              Choose a mode to get started
-            </p>
+              {/* Gradient Heading */}
+              <h2 className="text-3xl md:text-4xl font-extrabold mb-3 text-center text-gray-900 dark:text-white leading-tight">
+                Welcome to{" "}
+                <span className="bg-gradient-to-r from-blue-500 to-cyan-500 dark:from-blue-400 dark:to-cyan-400 bg-clip-text text-transparent">
+                  Nexus AI
+                </span>
+              </h2>
+              <p className="text-gray-500 dark:text-gray-400 mb-8 text-center text-sm md:text-base">
+                Choose a mode to get started
+              </p>
 
-            {/* 2×2 Feature Card Grid */}
-            {(() => {
-              const options = [
-                { icon: "✨", label: "Chat & Brainstorm",    prompt: "Chat" },
-                { icon: "🔍", label: "Research & Summarize", prompt: "Research" },
-                { icon: "💻", label: "Code & Develop",       prompt: "Code" },
-                { icon: "🎨", label: "Create Images",        prompt: "Images" },
-              ];
+              {/* 2×2 Feature Card Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                {[
+                  { icon: "✨", label: "Chat & Brainstorm",    prompt: "Chat" },
+                  { icon: "🔍", label: "Research & Summarize", prompt: "Research" },
+                  { icon: "💻", label: "Code & Develop",       prompt: "Code" },
+                  { icon: "🎨", label: "Create Images",        prompt: "Images" },
+                ].map((item, index) => (
+                  <div
+                    key={index}
+                    onClick={() => handleSendMessage(item.prompt)}
+                    className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-800 dark:text-white p-4 rounded-2xl shadow-md transition-all duration-200 cursor-pointer flex items-center gap-3 select-none"
+                  >
+                    <span className="text-xl md:text-2xl">{item.icon}</span>
+                    <span className="text-sm md:text-base font-semibold">{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {/* Render Messages */}
+              {messages.map((msg, index) => (
+                <Message
+                  key={msg.id || index}
+                  role={msg.role}
+                  content={msg.content}
+                  timestamp={msg.timestamp}
+                  image={msg.image}
+                />
+              ))}
 
-              return (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8 w-full">
-                  {options.map((item, index) => (
-                    <div
-                      key={index}
-                      onClick={() => handleSendMessage(item.prompt)}
-                      className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-800 dark:text-white p-4 rounded-2xl shadow-md dark:shadow-[0_8px_25px_rgba(0,0,0,0.4)] transition-all duration-200 cursor-pointer flex items-center gap-3 select-none"
-                    >
-                      <span className="text-2xl">{item.icon}</span>
-                      <span className="text-base font-medium">{item.label}</span>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-          </div>
-        ) : (
-          <div className="flex flex-col flex-1 overflow-y-auto py-4 gap-2">
-            {/* Render Messages */}
-            {messages.map((msg, index) => (
-              <Message
-                key={msg.id || index}
-                role={msg.role}
-                content={msg.content}
-                timestamp={msg.timestamp}
-              />
-            ))}
+              {/* Typing Indicator */}
+              {isLoading && <TypingIndicator />}
 
-            {/* Typing Indicator */}
-            {isLoading && <TypingIndicator />}
-
-            <div ref={messagesEndRef} />
-          </div>
-        )}
-
-        {/* INPUT AREA — fixed inside centered container */}
-        <div className="py-4">
-          <InputArea
-            onSendMessage={handleSendMessage}
-            isLoading={isLoading}
-            selectedModel={selectedModel}
-            setSelectedModel={setSelectedModel}
-            setMessages={setMessages}
-          />
-
-
+              <div ref={messagesEndRef} />
+            </div>
+          )}
         </div>
-      </div>
+      </main>
+
+      {/* INPUT AREA — Fixed/Sticky at the bottom */}
+      <footer className="flex-shrink-0 z-30 w-full max-w-3xl mx-auto px-4 py-4 sticky bottom-0 bg-gray-50 dark:bg-transparent">
+        <InputArea
+          onSendMessage={handleSendMessage}
+          isLoading={isLoading}
+          selectedModel={selectedModel}
+          setSelectedModel={setSelectedModel}
+          setMessages={setMessages}
+        />
+      </footer>
 
       {/* SIDEBAR */}
       <Sidebar
