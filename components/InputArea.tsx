@@ -14,8 +14,13 @@ interface InputAreaProps {
   setMessages: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
-// Speech Recognition setup
-const SpeechRecognition = typeof window !== "undefined" && (window.SpeechRecognition || (window as any).webkitSpeechRecognition);
+// Speech Recognition setup - TypeScript-safe and SSR compatible
+const SpeechRecognition =
+  typeof window !== "undefined"
+    ? (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition
+    : null;
+
 
 /**
  * @component InputArea
