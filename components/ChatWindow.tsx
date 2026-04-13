@@ -286,8 +286,11 @@ export default function ChatWindow() {
       </header>
 
       {/* SCROLLABLE CONTENT AREA */}
-      <main className="flex-1 overflow-y-auto w-full relative custom-scrollbar messages-scroll flex flex-col">
-        <div className={`flex-1 flex flex-col w-full h-full min-h-0 ${isChatOpen ? 'max-w-4xl mx-auto px-4 pt-10 pb-32 md:pb-10' : ''}`}>
+      <main 
+        className="flex-1 overflow-y-auto w-full relative custom-scrollbar messages-scroll flex flex-col"
+        style={{ scrollPaddingBottom: '120px' }}
+      >
+        <div className={`flex-1 flex flex-col w-full h-full min-h-[100vh] ${isChatOpen ? 'max-w-4xl mx-auto px-4 pt-10 pb-28 md:pb-4' : ''}`}>
 
         {!isChatOpen ? (
           // MINIMAL INPUT-FOCUSED HERO LAYOUT
@@ -369,7 +372,10 @@ export default function ChatWindow() {
       </main>
 
       {isChatOpen && (
-        <footer className="flex-shrink-0 z-30 w-full max-w-4xl mx-auto px-4 py-4 sticky bottom-0 bg-gray-50 dark:bg-transparent">
+        <footer 
+          className="flex-shrink-0 z-30 w-full max-w-4xl mx-auto px-4 fixed bottom-4 left-0 right-0 md:static bg-transparent md:bg-gray-50 md:dark:bg-transparent md:py-4"
+          style={{ bottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+        >
           <InputArea
             onSendMessage={handleSendMessage}
             isLoading={isLoading}
