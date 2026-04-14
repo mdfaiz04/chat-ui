@@ -161,7 +161,7 @@ export default function ChatWindow() {
     };
 
     setMessages((prev) => [...prev, tempUserMessage]);
-    
+
     // 🔥 Add a placeholder for the AI's streaming response
     const aiMessageId = Date.now().toString() + "ai";
     const tempAiMessage: MessageType = {
@@ -238,8 +238,8 @@ export default function ChatWindow() {
         const updated = [...prev];
         // If we already added the placeholder, replace its content with the error
         updated[updated.length - 1] = {
-           ...updated[updated.length - 1],
-           content: `⚠️ Error: ${error.message || "Something went wrong."}`
+          ...updated[updated.length - 1],
+          content: `⚠️ Error: ${error.message || "Something went wrong."}`
         };
         return updated;
       });
@@ -402,7 +402,7 @@ export default function ChatWindow() {
               )}
             </div>
           ) : (
-            <div className="flex flex-col gap-4 pt-16 pb-10">
+            <div className="flex flex-col gap-4 pt-18 pb-10">
               {messages.map((msg, index) => (
                 <Message
                   key={msg.id || index}

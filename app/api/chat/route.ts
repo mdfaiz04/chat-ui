@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       .sort({ timestamp: -1 }) // -1 gives newest first
       .limit(6)
       .lean();
-    
+
     history.reverse(); // put it back into reading chronological order
 
     // ✅ 2. Format History for AI
