@@ -33,7 +33,7 @@ export default function ChatWindow() {
   const [showProfileMenu, setShowProfileMenu] = useState(false); // Profile dropdown visibility
   const [isChatOpen, setIsChatOpen] = useState(false);         // Controls welcome vs chat UI
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);   // Sidebar visibility
-  const [selectedModel, setSelectedModel] = useState("Gemini 3 Flash"); // Selected AI model
+  const [selectedModel, setSelectedModel] = useState("Ollama (Local)"); // Selected AI model
   const [chatId, setChatId] = useState<string | null>(null); // Current session ID
   const [mounted, setMounted] = useState(false); // Hydration fix
 
@@ -161,6 +161,17 @@ export default function ChatWindow() {
     };
 
     setMessages((prev) => [...prev, tempUserMessage]);
+    
+    // 🔥 Add a placeholder for the AI's streaming response
+    const aiMessageId = Date.now().toString() + "ai";
+    const tempAiMessage: MessageType = {
+      id: aiMessageId,
+      role: "assistant",
+      content: "", // Will be filled as stream arrives
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, tempAiMessage]);
+
     setIsLoading(true);
 
     try {
@@ -174,36 +185,73 @@ export default function ChatWindow() {
         }),
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
+      // API is streaming now, so we hide the loading indicator immediately
+      setIsLoading(false);
 
-      const aiMessage: MessageType = {
-        ...data.message,
-        id: data.message.id || Date.now().toString() + Math.random(),
-      };
+      if (!response.ok) {
+        // If there's an error, it might still return JSON with {error: "..."}
+        let errorData;
+        try {
+          errorData = await response.clone().json();
+        } catch {
+          errorData = { error: await response.text() };
+        }
+        throw new Error(errorData.error || "API error");
+      }
 
-      setMessages((prev) => [...prev, aiMessage]);
+      if (!response.body) throw new Error("No response body");
+
+      // Replace normal fetch JSON parsing with streaming reader
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      let result = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        result += chunk;
+
+        // Apply clean output safety inline so user doesn't see partial 'User:' tags
+        let safeResult = result.split("User:")[0];
+        safeResult = safeResult.split("AI:")[0];
+        safeResult = safeResult.replace("<|assistant|>", "").trimStart();
+        safeResult = safeResult.replace("<|end|>", "");
+
+        // Update the last message (the AI placeholder) with the newly loaded chunk
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            content: safeResult
+          };
+          return updated;
+        });
+      }
 
     } catch (error: any) {
       console.error("Chat Window Error:", error);
-      const errorMessage: MessageType = {
-        id: Date.now().toString() + Math.random(),
-        role: "assistant",
-        content: `⚠️ Error: ${error.message || "Something went wrong."}`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Make sure it's false on error
+      setMessages((prev) => {
+        const updated = [...prev];
+        // If we already added the placeholder, replace its content with the error
+        updated[updated.length - 1] = {
+           ...updated[updated.length - 1],
+           content: `⚠️ Error: ${error.message || "Something went wrong."}`
+        };
+        return updated;
+      });
     }
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 1 }}
-      className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-cyan-50 dark:from-[#0a0f1f] dark:via-[#05070d] dark:to-black text-gray-900 dark:text-white transition-all duration-500 ease-in-out overflow-hidden relative"
+      className="h-[100dvh] flex flex-col bg-gradient-to-br from-blue-50 via-white to-cyan-50 dark:from-[#0a0f1f] dark:via-[#05070d] dark:to-black text-gray-900 dark:text-white transition-all duration-500 ease-in-out overflow-hidden relative"
     >
 
       {/* DYNAMIC BACKGROUND BLUR EFFECTS */}
@@ -212,8 +260,8 @@ export default function ChatWindow() {
       <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-cyan-500/5 dark:bg-cyan-600/10 blur-[100px] rounded-full -z-10" />
 
 
-      {/* HEADER SECTION - Fixed at top */}
-      <header className="flex-shrink-0 justify-between items-center px-4 md:px-6 py-3 border-b border-gray-200/50 dark:border-white/5 shadow-sm z-30 backdrop-blur-md bg-white/60 dark:bg-black/40 sticky top-0 flex">
+      {/* HEADER SECTION - Standard block flow guarantees no overlap */}
+      <header className="h-16 shrink-0 flex justify-between items-center px-4 md:px-6 border-b border-gray-200/50 dark:border-white/5 shadow-sm bg-white/95 dark:bg-black/95 backdrop-blur-md sticky top-0 z-50 relative">
         <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-blue-500/20 to-transparent shadow-[0_1px_10px_rgba(59,130,246,0.3)]" />
 
         {/* LEFT SIDE: Menu + Title */}
@@ -285,76 +333,76 @@ export default function ChatWindow() {
         </div>
       </header>
 
-      {/* SCROLLABLE CONTENT AREA */}
-      <main className="flex-1 overflow-y-auto w-full relative custom-scrollbar messages-scroll flex flex-col">
-        <div 
-          className={`flex-1 flex flex-col w-full h-full min-h-0 ${isChatOpen ? 'max-w-4xl mx-auto px-4 pt-24 pb-40 md:pb-4' : ''}`}
+      {/* SCROLLABLE CONTENT AREA - flex-1 and overflow-y-auto handle chat scrolling */}
+      <main className="flex-1 overflow-y-auto w-full relative custom-scrollbar messages-scroll flex flex-col min-h-0">
+        <div
+          className={`flex-1 flex flex-col w-full h-full min-h-0 ${isChatOpen ? 'max-w-3xl mx-auto px-4 pt-4 pb-40 md:pb-4' : ''}`}
           style={isChatOpen ? { paddingBottom: "calc(160px + env(safe-area-inset-bottom))" } : {}}
         >
 
-        {!isChatOpen ? (
-          // MINIMAL INPUT-FOCUSED HERO LAYOUT
-          <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
-            
-            {/* Center Section: Heading & Subtext */}
-            <div className="flex flex-col items-center text-center max-w-4xl w-full">
-              <motion.h2 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.8 }}
-                className="text-5xl md:text-7xl font-extrabold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent leading-tight tracking-tight mb-4"
-              >
-                Welcome to Nexus AI
-              </motion.h2>
-              <motion.p 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3, duration: 0.8 }}
-                className="text-gray-500 dark:text-gray-400 text-lg md:text-xl font-medium max-w-2xl px-4 mb-6"
-              >
-                The next generation of intelligent assistance. Experience the future of conversation.
-              </motion.p>
+          {!isChatOpen ? (
+            // MINIMAL INPUT-FOCUSED HERO LAYOUT
+            <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
 
-              {/* Centered Input Area - Primary Focus */}
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.5, duration: 0.8 }}
-                className="w-full max-w-3xl mt-8"
-              >
-                <InputArea
-                  onSendMessage={handleSendMessage}
-                  isLoading={isLoading}
-                  selectedModel={selectedModel}
-                  setSelectedModel={setSelectedModel}
-                  setMessages={setMessages}
-                />
-              </motion.div>
-            </div>
+              {/* Center Section: Heading & Subtext */}
+              <div className="flex flex-col items-center text-center max-w-4xl w-full">
+                <motion.h2
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.8 }}
+                  className="text-5xl md:text-7xl font-extrabold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent leading-tight tracking-tight mb-4"
+                >
+                  Welcome to Nexus AI
+                </motion.h2>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3, duration: 0.8 }}
+                  className="text-gray-500 dark:text-gray-400 text-lg md:text-xl font-medium max-w-2xl px-4 mb-6"
+                >
+                  The next generation of intelligent assistance. Experience the future of conversation.
+                </motion.p>
 
-            {/* Subtle Particles Overlay */}
-            {mounted && (
-              <div className="absolute inset-0 pointer-events-none -z-10 opacity-20 dark:opacity-30">
-                {[...Array(15)].map((_, i) => (
-                  <div 
-                    key={i} 
-                    className="absolute rounded-full bg-blue-400 dark:bg-blue-500 animate-float"
-                    style={{
-                      width: Math.random() * 4 + 2 + 'px',
-                      height: Math.random() * 4 + 2 + 'px',
-                      left: Math.random() * 100 + '%',
-                      top: Math.random() * 100 + '%',
-                      animationDuration: Math.random() * 10 + 10 + 's',
-                      animationDelay: Math.random() * 5 + 's',
-                      opacity: Math.random() * 0.5 + 0.1
-                    }}
+                {/* Centered Input Area - Primary Focus */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.5, duration: 0.8 }}
+                  className="w-full max-w-3xl mt-8"
+                >
+                  <InputArea
+                    onSendMessage={handleSendMessage}
+                    isLoading={isLoading}
+                    selectedModel={selectedModel}
+                    setSelectedModel={setSelectedModel}
+                    setMessages={setMessages}
                   />
-                ))}
+                </motion.div>
               </div>
-            )}
-          </div>
-        ) : (
-            <div className="flex flex-col gap-4">
+
+              {/* Subtle Particles Overlay */}
+              {mounted && (
+                <div className="absolute inset-0 pointer-events-none -z-10 opacity-20 dark:opacity-30">
+                  {[...Array(15)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="absolute rounded-full bg-blue-400 dark:bg-blue-500 animate-float"
+                      style={{
+                        width: Math.random() * 4 + 2 + 'px',
+                        height: Math.random() * 4 + 2 + 'px',
+                        left: Math.random() * 100 + '%',
+                        top: Math.random() * 100 + '%',
+                        animationDuration: Math.random() * 10 + 10 + 's',
+                        animationDelay: Math.random() * 5 + 's',
+                        opacity: Math.random() * 0.5 + 0.1
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4 pt-16 pb-10">
               {messages.map((msg, index) => (
                 <Message
                   key={msg.id || index}

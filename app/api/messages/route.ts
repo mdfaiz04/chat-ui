@@ -9,7 +9,7 @@ import Message from "@/models/Message";
 export async function GET(request: NextRequest) {
   try {
     await connectToDatabase();
-    
+
     const { searchParams } = new URL(request.url);
     const chatId = searchParams.get("chatId");
 
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 export async function DELETE() {
   try {
     await connectToDatabase();
-    
+
     // Remove all documents from the Message collection
     await Message.deleteMany({});
 

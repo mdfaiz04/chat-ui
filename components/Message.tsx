@@ -61,7 +61,7 @@ export default function Message({ role, content, timestamp, image }: MessageProp
         {/* "group" is a Tailwind trick — lets child elements react to hovering the parent */}
         <div className="relative group">
           <div
-            className={`px-4 py-2 rounded-2xl text-sm leading-relaxed shadow-sm ${isUser
+            className={`px-4 py-2 rounded-2xl text-sm leading-relaxed shadow-sm whitespace-pre-line ${isUser
               ? "bg-blue-500 text-white rounded-br-none"
               : "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-bl-none"
               }`}
@@ -72,7 +72,6 @@ export default function Message({ role, content, timestamp, image }: MessageProp
               </div>
             )}
             {content}
-
           </div>
 
           {/* Copy button — hidden by default, appears on hover */}

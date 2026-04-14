@@ -19,7 +19,7 @@ interface InputAreaProps {
 const SpeechRecognition =
   typeof window !== "undefined"
     ? (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition
+    (window as any).webkitSpeechRecognition
     : null;
 
 
@@ -27,10 +27,10 @@ const SpeechRecognition =
  * @component InputArea
  * @desc Handles user input, message sending, and textarea behavior with Upload and Voice features
  */
-export default function InputArea({ 
-  onSendMessage, 
-  isLoading, 
-  selectedModel, 
+export default function InputArea({
+  onSendMessage,
+  isLoading,
+  selectedModel,
   setSelectedModel,
   setMessages
 }: InputAreaProps) {
@@ -83,7 +83,7 @@ export default function InputArea({
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.lang = "en-US";
-      
+
       recognition.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
         setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
@@ -92,7 +92,7 @@ export default function InputArea({
 
       recognition.onend = () => setIsListening(false);
       recognition.onerror = () => setIsListening(false);
-      
+
       recognitionRef.current = recognition;
     }
   }, []);
@@ -161,7 +161,7 @@ export default function InputArea({
   // ---------------- UI ----------------
 
   return (
-    <motion.div 
+    <motion.div
       whileHover={{ y: -2 }}
       transition={{ duration: 0.3 }}
       className="w-full max-w-3xl mx-auto bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border border-gray-200 dark:border-zinc-700/50 rounded-2xl p-2 shadow-xl focus-within:shadow-2xl focus-within:border-blue-500/30 transition-all duration-300 group"
@@ -186,7 +186,7 @@ export default function InputArea({
         {/* LEFT SIDE: Upload Menu */}
         <div className="flex items-center gap-1">
           <div className="relative" ref={uploadRef}>
-            <button 
+            <button
               type="button"
               onClick={() => setOpenUpload(!openUpload)}
               className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
@@ -212,7 +212,7 @@ export default function InputArea({
               </div>
             )}
           </div>
-          
+
           <div className="flex items-center gap-1 ml-1 px-2 py-1 rounded-lg text-xs font-bold uppercase tracking-wider text-gray-400">
             Fast
           </div>
@@ -220,7 +220,7 @@ export default function InputArea({
 
         {/* RIGHT SIDE: Model Selection, Mic, Send */}
         <div className="flex items-center gap-2">
-          
+
           <div className="relative" ref={dropdownRef}>
             <button
               type="button"
@@ -234,7 +234,7 @@ export default function InputArea({
             {openModel && (
               <div className="absolute bottom-full mb-2 right-0 w-48 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-2xl z-50 overflow-hidden">
                 <div className="p-1">
-                  {["Gemini 3 Flash", "Claude Sonnet", "GPT-OSS 120B"].map((model) => (
+                  {["Ollama (Local)", "Claude Sonnet", "GPT-OSS 120B"].map((model) => (
                     <button
                       key={model}
                       type="button"
@@ -242,11 +242,10 @@ export default function InputArea({
                         setSelectedModel(model);
                         setOpenModel(false);
                       }}
-                      className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-all duration-150 ${
-                        selectedModel === model 
-                          ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium" 
-                          : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800"
-                      }`}
+                      className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-all duration-150 ${selectedModel === model
+                        ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium"
+                        : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800"
+                        }`}
                     >
                       {model}
                     </button>
@@ -256,14 +255,13 @@ export default function InputArea({
             )}
           </div>
 
-          <button 
+          <button
             type="button"
             onClick={handleMic}
-            className={`p-2 rounded-xl transition-all duration-200 ${
-              isListening 
-                ? "bg-red-500 text-white animate-pulse" 
-                : "text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800"
-            }`}
+            className={`p-2 rounded-xl transition-all duration-200 ${isListening
+              ? "bg-red-500 text-white animate-pulse"
+              : "text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800"
+              }`}
           >
             <Mic className="w-4 h-4" />
           </button>
