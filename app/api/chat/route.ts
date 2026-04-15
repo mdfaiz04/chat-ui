@@ -108,7 +108,13 @@ export async function POST(request: NextRequest) {
 
     const chatContent = message || body.content;
     const modelValue: string = model || DEFAULT_MODEL;
-    const useRealAI = process.env.USE_REAL_AI === "true";
+    // ── Check if we should use real AI or Mock ──
+    const rawUseRealAI = process.env.USE_REAL_AI;
+    const useRealAI = String(rawUseRealAI).trim().toLowerCase() === "true";
+
+    // Debug logging for Vercel/Production troubleshooting
+    console.log("ENV USE_REAL_AI (raw):", rawUseRealAI);
+    console.log("ENV USE_REAL_AI (parsed):", useRealAI);
 
     // ── Validate inputs ──────────────────────────
     if (!chatId) {
