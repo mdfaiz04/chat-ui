@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Mic, Send, Plus, ChevronDown, Image as ImageIcon, File as FileIcon } from "lucide-react";
 import { motion } from "framer-motion";
+import { MODELS } from "@/lib/models";
 
 /**
  * Props for InputArea component
@@ -158,6 +159,8 @@ export default function InputArea({
     }
   };
 
+  // MODELS is imported from @/lib/models — single source of truth
+
   // ---------------- UI ----------------
 
   return (
@@ -227,27 +230,27 @@ export default function InputArea({
               onClick={() => setOpenModel(!openModel)}
               className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-zinc-800/50 hover:bg-gray-100 dark:hover:bg-zinc-800 border border-gray-200 dark:border-zinc-700/50 text-xs font-semibold text-gray-700 dark:text-zinc-200 transition-all duration-200"
             >
-              {selectedModel}
+              {MODELS.find(m => m.value === selectedModel)?.label || selectedModel}
               <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${openModel ? 'rotate-180' : ''}`} />
             </button>
 
             {openModel && (
               <div className="absolute bottom-full mb-2 right-0 w-48 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-2xl z-50 overflow-hidden">
                 <div className="p-1">
-                  {["Ollama (Local)", "Claude Sonnet", "GPT-OSS 120B"].map((model) => (
+                  {MODELS.map((model) => (
                     <button
-                      key={model}
+                      key={model.value}
                       type="button"
                       onClick={() => {
-                        setSelectedModel(model);
+                        setSelectedModel(model.value);
                         setOpenModel(false);
                       }}
-                      className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-all duration-150 ${selectedModel === model
+                      className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-all duration-150 ${selectedModel === model.value
                         ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium"
                         : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800"
                         }`}
                     >
-                      {model}
+                      {model.label}
                     </button>
                   ))}
                 </div>

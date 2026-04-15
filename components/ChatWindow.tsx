@@ -7,6 +7,7 @@ import TypingIndicator from "./TypingIndicator";
 import Sidebar from "./Sidebar";
 import { Menu } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { DEFAULT_MODEL } from "@/lib/models";
 
 /**
  * MessageType defines the structure of a chat message
@@ -33,7 +34,7 @@ export default function ChatWindow() {
   const [showProfileMenu, setShowProfileMenu] = useState(false); // Profile dropdown visibility
   const [isChatOpen, setIsChatOpen] = useState(false);         // Controls welcome vs chat UI
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);   // Sidebar visibility
-  const [selectedModel, setSelectedModel] = useState("Ollama (Local)"); // Selected AI model
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL); // Selected AI model
   const [chatId, setChatId] = useState<string | null>(null); // Current session ID
   const [mounted, setMounted] = useState(false); // Hydration fix
 
@@ -185,23 +186,23 @@ export default function ChatWindow() {
         }),
       });
 
-      // API is streaming now, so we hide the loading indicator immediately
       setIsLoading(false);
 
+      // ── Handle non-OK responses (incl. 502 provider errors) ──
       if (!response.ok) {
-        // If there's an error, it might still return JSON with {error: "..."}
-        let errorData;
+        let errorData: { error?: string; details?: string };
         try {
-          errorData = await response.clone().json();
+          errorData = await response.json();
         } catch {
           errorData = { error: await response.text() };
         }
-        throw new Error(errorData.error || "API error");
+        const errMsg = errorData.details || errorData.error || `HTTP ${response.status}`;
+        throw new Error(errMsg);
       }
 
-      if (!response.body) throw new Error("No response body");
+      if (!response.body) throw new Error("No response body received.");
 
-      // Replace normal fetch JSON parsing with streaming reader
+      // ── Stream the response ──
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
 
@@ -214,13 +215,12 @@ export default function ChatWindow() {
         const chunk = decoder.decode(value, { stream: true });
         result += chunk;
 
-        // Apply clean output safety inline so user doesn't see partial 'User:' tags
+        // Strip any leaked prompt fragments
         let safeResult = result.split("User:")[0];
         safeResult = safeResult.split("AI:")[0];
         safeResult = safeResult.replace("<|assistant|>", "").trimStart();
         safeResult = safeResult.replace("<|end|>", "");
 
-        // Update the last message (the AI placeholder) with the newly loaded chunk
         setMessages((prev) => {
           const updated = [...prev];
           updated[updated.length - 1] = {
@@ -232,14 +232,13 @@ export default function ChatWindow() {
       }
 
     } catch (error: any) {
-      console.error("Chat Window Error:", error);
-      setIsLoading(false); // Make sure it's false on error
+      console.error("[ChatWindow] Error:", error);
+      setIsLoading(false);
       setMessages((prev) => {
         const updated = [...prev];
-        // If we already added the placeholder, replace its content with the error
         updated[updated.length - 1] = {
           ...updated[updated.length - 1],
-          content: `⚠️ Error: ${error.message || "Something went wrong."}`
+          content: `⚠️ ${error.message || "Something went wrong. Please try again."}`
         };
         return updated;
       });

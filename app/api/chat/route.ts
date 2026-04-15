@@ -1,20 +1,105 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import OpenAI from "openai";
 import connectToDatabase from "@/lib/mongoose";
 import Message from "@/models/Message";
-import mongoose from "mongoose";
+import { getModelConfig, DEFAULT_MODEL } from "@/lib/models";
 
-// ✅ Model Mapping
-const MODEL_MAP: Record<string, string> = {
-  ollama: "phi3",
-  openai: "gpt-4o-mini",
-  gemini: "gemini-1.5-flash",
-};
+// ─────────────────────────────────────────────
+// PROVIDER: GEMINI
+// ─────────────────────────────────────────────
+async function callGeminiAPI(prompt: string, geminiModelId: string): Promise<string> {
+  const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
 
+  if (!apiKey) throw new Error("GOOGLE_API_KEY is missing in .env.local");
+
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModelId}:generateContent?key=${apiKey}`;
+
+  console.log(`[GEMINI] Calling model: ${geminiModelId}`);
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json();
+    const errMsg = errorBody?.error?.message || response.statusText;
+    console.error(`[GEMINI] API Error (${response.status}):`, errMsg);
+    throw new Error(`Gemini API Error: ${errMsg}`);
+  }
+
+  const data = await response.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || "No response from Gemini.";
+}
+
+// ─────────────────────────────────────────────
+// PROVIDER: OLLAMA
+// ─────────────────────────────────────────────
+async function callOllamaAPI(prompt: string, ollamaModelId: string): Promise<string> {
+  const endpoint = "http://localhost:11434/api/generate";
+
+  console.log(`[OLLAMA] Calling model: ${ollamaModelId} at ${endpoint}`);
+
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: ollamaModelId,
+        prompt,
+        stream: false,
+      }),
+    });
+  } catch (err: any) {
+    // Connection refused — Ollama is not running
+    throw new Error(
+      `Cannot connect to Ollama at ${endpoint}. Make sure Ollama is running locally. (${err.message})`
+    );
+  }
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error(`[OLLAMA] API Error (${response.status}):`, errorBody);
+    throw new Error(`Ollama API Error (${response.status}): ${errorBody}`);
+  }
+
+  const data = await response.json();
+  if (!data.response) {
+    throw new Error("Ollama returned an empty response.");
+  }
+
+  console.log(`[OLLAMA] Response received (${data.response.length} chars)`);
+  return data.response;
+}
+
+// ─────────────────────────────────────────────
+// PROVIDER: OPENAI
+// ─────────────────────────────────────────────
+async function callOpenAIAPI(prompt: string, openAiModelId: string): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("OPENAI_API_KEY is missing in .env.local");
+
+  console.log(`[OPENAI] Calling model: ${openAiModelId}`);
+
+  const openai = new OpenAI({ apiKey });
+  const completion = await openai.chat.completions.create({
+    model: openAiModelId,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  return completion.choices[0]?.message?.content || "No response from OpenAI.";
+}
+
+// ─────────────────────────────────────────────
+// MAIN POST HANDLER
+// ─────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
-    console.log("=== API REQUEST RECEIVED ===");
+    console.log("\n=== API REQUEST RECEIVED ===");
 
     await connectToDatabase();
 
@@ -22,313 +107,122 @@ export async function POST(request: NextRequest) {
     const { message, model, chatId } = body;
 
     const chatContent = message || body.content;
-    const targetModel = model || "Ollama (Local)";
+    const modelValue: string = model || DEFAULT_MODEL;
     const useRealAI = process.env.USE_REAL_AI === "true";
 
-    console.log(`DEBUG Model: ${targetModel}`);
-
+    // ── Validate inputs ──────────────────────────
     if (!chatId) {
       return NextResponse.json({ error: "chatId is required" }, { status: 400 });
     }
-
     if (!chatContent) {
       return NextResponse.json({ error: "Message content is required" }, { status: 400 });
     }
 
-    // ✅ 1. Fetch Chat History (Before saving current message so we don't duplicate it)
-    // Fetch last 6 messages from MongoDB using `chatId`, sorted newest to oldest, then reverse to chronological order
+    // ── Resolve model config (exact lookup, no fragile string matching) ──
+    let modelConfig;
+    try {
+      modelConfig = getModelConfig(modelValue);
+    } catch {
+      console.warn(`[ROUTER] Unknown model value "${modelValue}", falling back to "${DEFAULT_MODEL}"`);
+      modelConfig = getModelConfig(DEFAULT_MODEL);
+    }
+
+    console.log(`[ROUTER] Model selected: "${modelValue}" → provider: ${modelConfig.provider} → API model: ${modelConfig.model}`);
+
+    // ── Fetch conversation history ──────────────
     const history = await Message.find({ chatId })
-      .sort({ timestamp: -1 }) // -1 gives newest first
+      .sort({ timestamp: -1 })
       .limit(6)
       .lean();
+    history.reverse();
 
-    history.reverse(); // put it back into reading chronological order
-
-    // ✅ 2. Format History for AI
-    // Convert previous messages into a clear text format: "User: ..." or "AI: ..."
-    let historyText = history
+    const historyText = history
       .map((msg: any) => `${msg.role === "user" ? "User" : "AI"}: ${msg.content}`)
       .join("\n");
 
-    // ✅ Save user message
+    // ── Save user message ───────────────────────
     await Message.create({
       chatId,
       role: "user",
       content: chatContent,
-      model: targetModel,
+      model: modelValue,
     });
 
+    const prompt = `You are a helpful AI assistant.
 
+Conversation History:
+${historyText || "(No previous messages)"}
+
+User: ${chatContent}
+
+AI:`;
+
+    // ── Route to correct provider ───────────────
     let botReply = "";
 
     if (useRealAI) {
       try {
-        const lowerModel = targetModel.toLowerCase();
-        let provider: "ollama" | "openai" | "gemini" | "claude" = "ollama";
+        const { provider, model: apiModelId } = modelConfig;
 
-        if (lowerModel.includes("gpt") || lowerModel.includes("openai")) {
-          provider = "openai";
-        } else if (lowerModel.includes("gemini")) {
-          provider = "gemini";
-        } else if (lowerModel.includes("claude")) {
-          provider = "claude";
-        }
+        if (provider === "gemini") {
+          console.log(`[ROUTER] → Using GEMINI`);
+          botReply = await callGeminiAPI(prompt, apiModelId);
 
-        // ✅ 1. INTENT DETECTION
-        const lowerMsg = chatContent.toLowerCase();
+        } else if (provider === "ollama") {
+          console.log(`[ROUTER] → Using OLLAMA`);
+          botReply = await callOllamaAPI(prompt, apiModelId);
 
-        const isGreeting =
-          lowerMsg === "hi" ||
-          lowerMsg === "hello" ||
-          lowerMsg.includes("hey");
+        } else if (provider === "openai") {
+          console.log(`[ROUTER] → Using OPENAI`);
+          botReply = await callOpenAIAPI(prompt, apiModelId);
 
-        const isDetailed =
-          lowerMsg.includes("explain") ||
-          lowerMsg.includes("detail") ||
-          lowerMsg.includes("what") ||
-          lowerMsg.includes("how") ||
-          lowerMsg.includes("why");
-
-        const isFollowUp =
-          lowerMsg.includes("detail") ||
-          lowerMsg.includes("more") ||
-          lowerMsg.includes("example") ||
-          lowerMsg.includes("explain");
-
-        // ✅ SMART CONTEXT HANDLING
-        if (!isFollowUp) {
-          historyText = "";
-        }
-
-        // ✅ 2. RESPONSE LOGIC
-        let prompt = "";
-
-        if (isGreeting) {
-          prompt = `
-You are a friendly AI.
-
-Reply in ONLY one short line.
-Be natural and conversational.
-
-Example:
-"Hi! How can I help you today?"
-`;
         } else {
-          prompt = `
-You are a helpful AI assistant.
-
-IMPORTANT RULES:
-- Answer ONLY the latest user question
-- If the question is new, ignore previous conversation
-- ONLY continue previous topic if clearly asked
-- DO NOT mix unrelated topics
-- DO NOT assume context incorrectly
-- DO NOT generate unrelated content
-
-Style:
-- Natural (like ChatGPT)
-- Clean (no ###, no markdown noise)
-- Human-like tone
-
-Conversation:
-${historyText}
-
-User: ${chatContent}
-
-AI:
-`;
+          throw new Error(`No handler for provider: ${provider}`);
         }
 
-        // ✅ 3. ENABLE STREAMING (CRITICAL)
-        if (provider === "ollama") {
-          console.log("DEBUG: Using Ollama (phi3) with streaming...");
-
-          const ollamaResponse = await fetch("http://localhost:11434/api/generate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: MODEL_MAP.ollama,
-              prompt,
-              stream: true, // 🔥 IMPORTANT
-              options: {
-                num_predict: isDetailed ? 500 : 120,
-                temperature: 0.7,
-                stop: ["User:", "AI:"]
-              }
-            }),
-          });
-
-          if (!ollamaResponse.ok) {
-            const text = await ollamaResponse.text();
-            throw new Error(`Ollama API error: ${ollamaResponse.status} - ${text}`);
-          }
-
-          // Return streaming response
-          const stream = new ReadableStream({
-            async start(controller) {
-              const reader = ollamaResponse.body?.getReader();
-              if (!reader) {
-                controller.close();
-                return;
-              }
-              const decoder = new TextDecoder();
-              let buffer = "";
-              let fullText = "";
-
-              try {
-                while (true) {
-                  const { done, value } = await reader.read();
-                  if (done) break;
-
-                  buffer += decoder.decode(value, { stream: true });
-                  const lines = buffer.split('\n');
-                  buffer = lines.pop() || "";
-
-                  for (const line of lines) {
-                    if (!line.trim()) continue;
-                    try {
-                      const parsed = JSON.parse(line);
-                      if (parsed.response) {
-                        fullText += parsed.response;
-                        controller.enqueue(new TextEncoder().encode(parsed.response));
-                      }
-                    } catch (e) {
-                      // ignore parse errors for partial chunks
-                    }
-                  }
-                }
-              } finally {
-                // ✅ 6. CLEAN OUTPUT SAFETY
-                let safeBotReply = fullText.split("User:")[0];
-                safeBotReply = safeBotReply.split("AI:")[0];
-                safeBotReply = safeBotReply.replace("<|assistant|>", "").trimStart();
-                safeBotReply = safeBotReply.replace("<|end|>", "");
-
-                if (safeBotReply.toLowerCase().includes("covenant")) {
-                  safeBotReply = "⚠️ Context mismatch detected. Please retry.";
-                }
-
-                // SAVE AI RESPONSE to MongoDB
-                try {
-                  if (mongoose.connection.readyState !== 1) {
-                    await connectToDatabase();
-                  }
-                  await Message.create({
-                    chatId,
-                    role: "assistant",
-                    content: safeBotReply,
-                    model: targetModel,
-                  });
-                  console.log("✅ AI streamed & saved");
-                } catch (err: any) {
-                  console.error("DB Save Error:", err);
-                }
-
-                controller.close();
-              }
-            }
-          });
-
-          return new Response(stream, {
-            headers: {
-              'Content-Type': 'text/plain; charset=utf-8',
-              'Transfer-Encoding': 'chunked'
-            }
-          });
-        }
-
-        // =========================
-        // ✅ OPENAI
-        // =========================
-        else if (provider === "openai") {
-          console.log("DEBUG: Using OpenAI...");
-
-          const openai = new OpenAI({
-            apiKey: process.env.OPENAI_API_KEY,
-          });
-
-          const completion = await openai.chat.completions.create({
-            model: MODEL_MAP.openai,
-            messages: [
-              {
-                role: "user",
-                content: prompt, // using the generated prompt
-              },
-            ],
-          });
-
-          botReply = completion.choices[0]?.message?.content || "";
-        }
-
-        // =========================
-        // ✅ GEMINI
-        // =========================
-        else if (provider === "gemini") {
-          console.log("DEBUG: Using Gemini...");
-
-          const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
-          const generativeModel = genAI.getGenerativeModel({
-            model: MODEL_MAP.gemini,
-          });
-
-          const result = await generativeModel.generateContent(prompt); // using generated prompt
-
-          botReply = result.response.text();
-        }
-      } catch (apiError: any) {
-        console.error("DEBUG: AI ERROR:", apiError.message);
-
-        botReply =
-          "⚠️ AI Error. Check:\n" +
-          "- Ollama is running\n" +
-          "- Model installed (ollama pull phi3)";
+      } catch (err: any) {
+        console.error(`[ROUTER] Provider error (${modelConfig.provider}):`, err.message);
+        // Return a descriptive error — do NOT silently fall back to another model
+        return NextResponse.json(
+          {
+            error: `AI provider error (${modelConfig.provider})`,
+            details: err.message,
+          },
+          { status: 502 }
+        );
       }
+    } else {
+      // USE_REAL_AI is false — mock mode
+      botReply = `[Mock] You asked: "${chatContent}" (using ${modelConfig.label})`;
+      console.log("[ROUTER] USE_REAL_AI=false → returning mock response");
     }
 
-    // fallback safety
+    // ── Guard: never save an empty reply ────────
     if (!botReply || botReply.trim() === "") {
-      botReply = "⚠️ AI Error: Could not generate response.";
+      console.warn("[ROUTER] Empty reply received from provider — something went wrong.");
+      return NextResponse.json(
+        { error: "Empty response from AI provider." },
+        { status: 502 }
+      );
     }
 
-    let safeBotReply = botReply.split("User:")[0];
-    safeBotReply = safeBotReply.split("AI:")[0];
-    safeBotReply = safeBotReply.replace("<|assistant|>", "").trimStart();
-    safeBotReply = safeBotReply.replace("<|end|>", "");
+    // ── Save AI response ────────────────────────
+    const aiMessage = await Message.create({
+      chatId,
+      role: "assistant",
+      content: botReply,
+      model: modelValue,
+    });
 
-    if (safeBotReply.toLowerCase().includes("covenant")) {
-      safeBotReply = "⚠️ Context mismatch detected. Please retry.";
-    }
+    console.log(`[ROUTER] ✅ Response saved (${botReply.length} chars) — ID: ${aiMessage._id}\n`);
 
-    // SAVE AI RESPONSE (NON-STREAMED)
-    console.log(`DEBUG: Saving non-streamed AI message...`);
-    try {
-      if (mongoose.connection.readyState !== 1) {
-        console.warn("Reconnecting DB...");
-        await connectToDatabase();
-      }
+    return new Response(aiMessage.content, {
+      status: 201,
+      headers: { "Content-Type": "text/plain" },
+    });
 
-      const aiMessage = await Message.create({
-        chatId,
-        role: "assistant",
-        content: safeBotReply,
-        model: targetModel,
-      });
-
-      console.log("✅ AI saved:", aiMessage._id);
-
-      // Return raw text response instead of JSON for unified receiver handling
-      return new Response(aiMessage.content, {
-        status: 201,
-        headers: { 'Content-Type': 'text/plain; charset=utf-8' }
-      });
-    } catch (err: any) {
-      console.error("DB Save Error:", err);
-      throw err;
-    }
   } catch (error: any) {
-    console.error("CRITICAL ERROR:", error);
-
+    console.error("[CRITICAL ERROR]", error);
     return NextResponse.json(
       { error: "Internal Server Error", details: error.message },
       { status: 500 }
