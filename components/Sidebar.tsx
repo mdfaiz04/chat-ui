@@ -10,13 +10,14 @@ interface SidebarProps {
   onSelectChat: (id: string) => void; // Function to load a specific chat
   onSendMessage: (content: string) => void; // Function to send a message (added)
   onNewChat: () => void; // Function to start a new chat (added)
+  onClearHistory?: () => void; // Function to clear all chat history (new)
 }
 
 /**
  * @component Sidebar
  * @desc Displays chat sessions grouped from MongoDB with selection support
  */
-export default function Sidebar({ isOpen, onClose, onSelectChat, onSendMessage, onNewChat }: SidebarProps) {
+export default function Sidebar({ isOpen, onClose, onSelectChat, onSendMessage, onNewChat, onClearHistory }: SidebarProps) {
 
   // ---------------- STATE ----------------
 
@@ -164,6 +165,24 @@ export default function Sidebar({ isOpen, onClose, onSelectChat, onSendMessage, 
                            focus:border-blue-500/30 focus:ring-4 focus:ring-blue-500/5 transition-all duration-200"
               />
             </div>
+          </div>
+
+          {/* NEW FEATURE: Clear All History */}
+          <div className="px-2">
+            <button
+              onClick={() => {
+                if (onClearHistory) {
+                  onClearHistory();
+                  onClose();
+                }
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg 
+                         text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 
+                         transition-colors duration-200 text-left"
+            >
+              <Trash size={18} />
+              <span className="text-sm font-medium">Clear All History</span>
+            </button>
           </div>
 
           {/* BOTTOM SECTION: Chat History */}

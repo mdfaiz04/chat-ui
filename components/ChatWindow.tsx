@@ -6,7 +6,7 @@ import Message from "./Message";
 import InputArea from "./InputArea";
 import TypingIndicator from "./TypingIndicator";
 import Sidebar from "./Sidebar";
-import { Menu, LogIn, LogOut, User, Trash2, ChevronDown } from "lucide-react";
+import { Menu, LogIn, LogOut, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DEFAULT_MODEL } from "@/lib/models";
 
@@ -432,20 +432,6 @@ export default function ChatWindow() {
                     <div className="py-1">
                       <button
                         onClick={() => {
-                          handleClearChat();
-                          setShowProfileMenu(false);
-                        }}
-                        id="clear-chat-button"
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4 text-gray-400" />
-                        Clear Chat History
-                      </button>
-
-                      <div className="border-t border-gray-100 dark:border-zinc-800 my-1" />
-
-                      <button
-                        onClick={() => {
                           setShowProfileMenu(false);
                           signOut();
                         }}
@@ -603,6 +589,7 @@ export default function ChatWindow() {
         onSelectChat={loadChat}
         onSendMessage={handleSendMessage}
         onNewChat={handleNewChat}
+        onClearHistory={handleClearChat}
       />
 
     </motion.div>
