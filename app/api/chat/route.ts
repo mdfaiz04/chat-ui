@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import OpenAI from "openai";
 import connectToDatabase from "@/lib/mongoose";
 import Message from "@/models/Message";
@@ -85,6 +87,20 @@ export async function POST(req: NextRequest) {
   try {
     console.log("\n=== API REQUEST RECEIVED ===");
 
+    // 🔐 AUTH CHECK — reject unauthenticated users
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.email) {
+      console.log("[AUTH] ❌ Unauthorized request");
+      return NextResponse.json(
+        { error: "Unauthorized. Please sign in to use the chat." },
+        { status: 401 }
+      );
+    }
+
+    const userEmail = session.user.email;
+    console.log(`[AUTH] ✅ Authenticated: ${userEmail}`);
+
     await connectToDatabase();
 
     const body = await req.json();
@@ -95,7 +111,6 @@ export async function POST(req: NextRequest) {
 
     // 🔥 FORCE REAL AI (NO MOCK EVER)
     console.log("ENV USE_REAL_AI:", process.env.USE_REAL_AI);
-    const useRealAI = true;
 
     if (!chatId) {
       return NextResponse.json({ error: "chatId required" }, { status: 400 });
@@ -116,8 +131,8 @@ export async function POST(req: NextRequest) {
       `[ROUTER] Model: "${modelValue}" → ${modelConfig.provider} → ${modelConfig.model}`
     );
 
-    // History
-    const history = await Message.find({ chatId })
+    // History — scoped to user
+    const history = await Message.find({ chatId, userId: userEmail })
       .sort({ timestamp: -1 })
       .limit(6)
       .lean();
@@ -128,9 +143,10 @@ export async function POST(req: NextRequest) {
       .map((m: any) => `${m.role === "user" ? "User" : "AI"}: ${m.content}`)
       .join("\n");
 
-    // Save user
+    // Save user message — tied to user
     await Message.create({
       chatId,
+      userId: userEmail,
       role: "user",
       content: chatContent,
       model: modelValue,
@@ -180,6 +196,7 @@ AI:
 
     const aiMsg = await Message.create({
       chatId,
+      userId: userEmail,
       role: "assistant",
       content: reply,
       model: modelValue,

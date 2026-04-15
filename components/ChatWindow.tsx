@@ -1,11 +1,12 @@
 "use client"; // Enables client-side rendering (required for hooks like useState, useEffect)
 
 import { useState, useEffect, useRef } from "react";
+import { useSession, signIn, signOut } from "next-auth/react";
 import Message from "./Message";
 import InputArea from "./InputArea";
 import TypingIndicator from "./TypingIndicator";
 import Sidebar from "./Sidebar";
-import { Menu } from "lucide-react";
+import { Menu, LogIn, LogOut, User, Trash2, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DEFAULT_MODEL } from "@/lib/models";
 
@@ -26,6 +27,9 @@ interface MessageType {
  */
 export default function ChatWindow() {
 
+  // ---------------- AUTH ----------------
+  const { data: session, status } = useSession();
+
   // ---------------- STATE MANAGEMENT ----------------
 
   const [messages, setMessages] = useState<MessageType[]>([]); // Stores chat history
@@ -37,6 +41,7 @@ export default function ChatWindow() {
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL); // Selected AI model
   const [chatId, setChatId] = useState<string | null>(null); // Current session ID
   const [mounted, setMounted] = useState(false); // Hydration fix
+  const [authError, setAuthError] = useState<string | null>(null); // Auth error messages
 
   // ---------------- REFS ----------------
 
@@ -112,20 +117,26 @@ export default function ChatWindow() {
   }, [isDarkMode]);
 
   /**
-   * Clears all messages from DB and local state
+   * Clears all messages for the current user via the clear chat API
    */
   const handleClearChat = async () => {
     if (!window.confirm("Are you sure you want to clear all chat history?")) return;
 
     try {
-      const response = await fetch("/api/messages", { method: "DELETE" });
+      const response = await fetch("/api/chat/clear", { method: "DELETE" });
       if (response.ok) {
         setMessages([]);
         setIsChatOpen(false);
         setChatId(crypto.randomUUID()); // Reset with new ID
+      } else {
+        const data = await response.json();
+        setAuthError(data.error || "Failed to clear chat history.");
+        setTimeout(() => setAuthError(null), 4000);
       }
     } catch (error) {
       console.error("Failed to clear chat:", error);
+      setAuthError("Failed to clear chat history. Please try again.");
+      setTimeout(() => setAuthError(null), 4000);
     }
   };
 
@@ -150,6 +161,13 @@ export default function ChatWindow() {
    * Handles sending user message and receiving AI response
    */
   const handleSendMessage = async (content: string) => {
+    // Check authentication before sending
+    if (!session?.user) {
+      setAuthError("Please sign in to send messages.");
+      setTimeout(() => setAuthError(null), 4000);
+      return;
+    }
+
     setIsChatOpen(true);
 
     const tempId = Date.now().toString() + Math.random();
@@ -187,6 +205,21 @@ export default function ChatWindow() {
       });
 
       setIsLoading(false);
+
+      // ── Handle 401 specifically ──
+      if (response.status === 401) {
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            content: "⚠️ Please sign in to use the chat."
+          };
+          return updated;
+        });
+        setAuthError("Session expired. Please sign in again.");
+        setTimeout(() => setAuthError(null), 4000);
+        return;
+      }
 
       // ── Handle non-OK responses (incl. 502 provider errors) ──
       if (!response.ok) {
@@ -245,6 +278,17 @@ export default function ChatWindow() {
     }
   };
 
+  /**
+   * Get user initials for avatar
+   */
+  const getUserInitials = () => {
+    if (session?.user?.name) {
+      const parts = session.user.name.split(" ");
+      return parts.map(p => p[0]).join("").toUpperCase().slice(0, 2);
+    }
+    return "?";
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -258,6 +302,19 @@ export default function ChatWindow() {
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-500/10 dark:bg-purple-600/10 blur-[130px] rounded-full -z-10 animate-pulse" style={{ animationDelay: '3s' }} />
       <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-cyan-500/5 dark:bg-cyan-600/10 blur-[100px] rounded-full -z-10" />
 
+      {/* AUTH ERROR TOAST */}
+      <AnimatePresence>
+        {authError && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 bg-red-500/90 backdrop-blur-md text-white text-sm font-medium rounded-xl shadow-lg border border-red-400/30"
+          >
+            {authError}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* HEADER SECTION - Standard block flow guarantees no overlap */}
       <header className="h-16 shrink-0 flex justify-between items-center px-4 md:px-6 border-b border-gray-200/50 dark:border-white/5 shadow-sm bg-white/95 dark:bg-black/95 backdrop-blur-md sticky top-0 z-50 relative">
@@ -276,8 +333,8 @@ export default function ChatWindow() {
           </div>
         </div>
 
-        {/* RIGHT SIDE: Theme + Profile */}
-        <div className="flex items-center gap-4">
+        {/* RIGHT SIDE: Theme + Auth */}
+        <div className="flex items-center gap-3">
 
           {/* Theme Toggle Button */}
           <button
@@ -294,41 +351,116 @@ export default function ChatWindow() {
             </span>
           </button>
 
-          {/* Profile Menu */}
-          <div ref={profileMenuRef} className="relative">
+          {/* AUTH: Sign In Button (when not logged in) */}
+          {status === "loading" ? (
+            <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-zinc-700 animate-pulse" />
+          ) : !session ? (
             <button
-              onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="w-8 h-8 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center"
+              onClick={() => signIn("google")}
+              id="sign-in-button"
+              className="flex items-center gap-2 px-4 py-2 rounded-full
+                         bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-sm font-semibold
+                         shadow-md hover:shadow-lg hover:translate-y-[-1px] 
+                         active:scale-95 transition-all duration-300"
             >
-              AJ
+              <LogIn className="w-4 h-4" />
+              <span className="hidden sm:inline">Sign In</span>
             </button>
+          ) : (
+            /* AUTH: Profile Menu (when logged in) */
+            <div ref={profileMenuRef} className="relative">
+              <button
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                id="profile-menu-button"
+                className="flex items-center gap-2 px-2 py-1.5 rounded-full
+                           hover:bg-gray-100 dark:hover:bg-zinc-800 
+                           transition-all duration-200 group"
+              >
+                {session.user?.image ? (
+                  <img
+                    src={session.user.image}
+                    alt="Profile"
+                    className="w-8 h-8 rounded-full border-2 border-blue-500/30 shadow-sm"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-sm font-bold flex items-center justify-center shadow-sm">
+                    {getUserInitials()}
+                  </div>
+                )}
+                <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 hidden sm:block ${showProfileMenu ? 'rotate-180' : ''}`} />
+              </button>
 
-            {showProfileMenu && (
-              <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
-                <button
-                  onClick={() => setShowProfileMenu(false)}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  Account Details
-                </button>
-                <button
-                  onClick={() => {
-                    handleClearChat();
-                    setShowProfileMenu(false);
-                  }}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  Clear Chat History
-                </button>
-                <button
-                  onClick={() => setShowProfileMenu(false)}
-                  className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  Sign Out
-                </button>
-              </div>
-            )}
-          </div>
+              {/* DROPDOWN MENU */}
+              <AnimatePresence>
+                {showProfileMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -5 }}
+                    transition={{ duration: 0.15 }}
+                    id="profile-dropdown"
+                    className="absolute right-0 mt-2 w-64 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-gray-200/80 dark:border-zinc-700/50 z-50 overflow-hidden backdrop-blur-xl"
+                  >
+                    {/* Account Details Section */}
+                    <div className="px-4 py-3 border-b border-gray-100 dark:border-zinc-800">
+                      <div className="flex items-center gap-3">
+                        {session.user?.image ? (
+                          <img
+                            src={session.user.image}
+                            alt="Profile"
+                            className="w-10 h-10 rounded-full border-2 border-blue-500/20"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-sm font-bold flex items-center justify-center">
+                            {getUserInitials()}
+                          </div>
+                        )}
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                            {session.user?.name || "User"}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-zinc-400 truncate">
+                            {session.user?.email || ""}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          handleClearChat();
+                          setShowProfileMenu(false);
+                        }}
+                        id="clear-chat-button"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4 text-gray-400" />
+                        Clear Chat History
+                      </button>
+
+                      <div className="border-t border-gray-100 dark:border-zinc-800 my-1" />
+
+                      <button
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          signOut();
+                        }}
+                        id="sign-out-button"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Sign Out
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
       </header>
 
@@ -359,24 +491,56 @@ export default function ChatWindow() {
                   transition={{ delay: 0.3, duration: 0.8 }}
                   className="text-gray-500 dark:text-gray-400 text-lg md:text-xl font-medium max-w-2xl px-4 mb-6"
                 >
-                  The next generation of intelligent assistance. Experience the future of conversation.
+                  {session
+                    ? `Hello, ${session.user?.name?.split(" ")[0] || "there"}! The next generation of intelligent assistance.`
+                    : "Sign in with Google to experience the future of conversation."
+                  }
                 </motion.p>
 
-                {/* Centered Input Area - Primary Focus */}
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.5, duration: 0.8 }}
-                  className="w-full max-w-3xl mt-8"
-                >
-                  <InputArea
-                    onSendMessage={handleSendMessage}
-                    isLoading={isLoading}
-                    selectedModel={selectedModel}
-                    setSelectedModel={setSelectedModel}
-                    setMessages={setMessages}
-                  />
-                </motion.div>
+                {/* Sign In Prompt (if not authenticated) */}
+                {!session && status !== "loading" && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5, duration: 0.5 }}
+                    className="mb-8"
+                  >
+                    <button
+                      onClick={() => signIn("google")}
+                      className="flex items-center gap-3 px-8 py-3 rounded-full
+                                 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 
+                                 text-white text-base font-semibold
+                                 shadow-lg hover:shadow-xl hover:translate-y-[-2px]
+                                 active:scale-95 transition-all duration-300"
+                    >
+                      <svg className="w-5 h-5" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+                        <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                      </svg>
+                      Sign in with Google
+                    </button>
+                  </motion.div>
+                )}
+
+                {/* Centered Input Area - Primary Focus (only show if authenticated) */}
+                {session && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.5, duration: 0.8 }}
+                    className="w-full max-w-3xl mt-8"
+                  >
+                    <InputArea
+                      onSendMessage={handleSendMessage}
+                      isLoading={isLoading}
+                      selectedModel={selectedModel}
+                      setSelectedModel={setSelectedModel}
+                      setMessages={setMessages}
+                    />
+                  </motion.div>
+                )}
               </div>
 
               {/* Subtle Particles Overlay */}
@@ -418,7 +582,7 @@ export default function ChatWindow() {
         </div>
       </main>
 
-      {isChatOpen && (
+      {isChatOpen && session && (
         <footer className="fixed bottom-4 left-0 right-0 px-4 z-30">
           <div className="max-w-4xl mx-auto">
             <InputArea

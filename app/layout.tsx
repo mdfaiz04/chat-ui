@@ -2,7 +2,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
-
+import AuthProvider from "@/components/AuthProvider";
 
 // Load the Geist font — a clean, modern font great for UIs
 const geist = Geist({
@@ -16,19 +16,17 @@ export const metadata: Metadata = {
 };
 
 // RootLayout wraps EVERY page in the app
-// "children" is whatever page is currently being shown
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode; // ReactNode = any valid React content
+  children: React.ReactNode;
 }) {
   return (
-    // suppressHydrationWarning prevents a warning caused by dark mode
-    // class on <html> being set by JavaScript after the page loads
     <html lang="en" suppressHydrationWarning>
       <body className={`${geist.className} antialiased`}>
-        {/* antialiased makes text look smoother on screens */}
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

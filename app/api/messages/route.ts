@@ -1,21 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongoose";
 import Message from "@/models/Message";
 
 /**
  * GET /api/messages
  * Fetches either all messages for a specific chatId OR grouped chat sessions
+ * Scoped to the authenticated user
  */
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const userEmail = session.user.email;
+
     await connectToDatabase();
 
     const { searchParams } = new URL(request.url);
     const chatId = searchParams.get("chatId");
 
     if (chatId) {
-      // Return specific history for a session
-      const messages = await Message.find({ chatId }).sort({ timestamp: 1 });
+      // Return specific history for a session — scoped to user
+      const messages = await Message.find({ chatId, userId: userEmail }).sort({ timestamp: 1 });
       return NextResponse.json(messages.map(msg => ({
         id: msg._id,
         role: msg.role,
@@ -26,8 +40,9 @@ export async function GET(request: NextRequest) {
       })));
     }
 
-    // Return grouped list of conversations for sidebar
+    // Return grouped list of conversations for sidebar — scoped to user
     const sessions = await Message.aggregate([
+      { $match: { userId: userEmail } },
       { $sort: { timestamp: -1 } },
       {
         $group: {
@@ -50,14 +65,23 @@ export async function GET(request: NextRequest) {
 
 /**
  * DELETE /api/messages
- * Clears all messages from the database
+ * Clears all messages for the authenticated user
  */
 export async function DELETE() {
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     await connectToDatabase();
 
-    // Remove all documents from the Message collection
-    await Message.deleteMany({});
+    // Remove only this user's messages
+    await Message.deleteMany({ userId: session.user.email });
 
     return NextResponse.json({ message: "Chat history cleared" });
   } catch (error) {

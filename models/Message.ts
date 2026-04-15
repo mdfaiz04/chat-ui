@@ -11,15 +11,17 @@ import mongoose, { Schema, model, models } from "mongoose";
 const MessageSchema = new Schema({
   chatId: {
     type: String,
-    required: false, // Optional for backward compatibility with old test data
-
+    required: false,
+  },
+  userId: {
+    type: String,
+    required: true, // Tied to Google Email
   },
   role: {
     type: String,
     enum: ["user", "assistant"],
     required: true,
   },
-
   content: {
     type: String,
     required: true,
