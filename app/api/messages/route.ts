@@ -6,86 +6,68 @@ import Message from "@/models/Message";
 
 /**
  * GET /api/messages
- * Fetches either all messages for a specific chatId OR grouped chat sessions
- * Scoped to the authenticated user
+ * Fetches all messages for a specific threadId.
+ * Scoped to the authenticated user.
  */
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userEmail = session.user.email;
+    const userId = (session.user as any).id;
+    const { searchParams } = new URL(request.url);
+    const threadId = searchParams.get("threadId");
+
+    if (!threadId) {
+      return NextResponse.json({ error: "threadId is required" }, { status: 400 });
+    }
 
     await connectToDatabase();
 
-    const { searchParams } = new URL(request.url);
-    const chatId = searchParams.get("chatId");
+    // Fetch messages for this thread and user
+    const messages = await Message.find({ 
+      threadId, 
+      userId 
+    }).sort({ createdAt: 1 });
 
-    if (chatId) {
-      // Return specific history for a session — scoped to user
-      const messages = await Message.find({ chatId, userId: userEmail }).sort({ timestamp: 1 });
-      return NextResponse.json(messages.map(msg => ({
-        id: msg._id,
-        role: msg.role,
-        content: msg.content,
-        timestamp: msg.timestamp,
-        model: msg.model,
-        image: msg.image
-      })));
-    }
-
-    // Return grouped list of conversations for sidebar — scoped to user
-    const sessions = await Message.aggregate([
-      { $match: { userId: userEmail } },
-      { $sort: { timestamp: -1 } },
-      {
-        $group: {
-          _id: "$chatId",
-          title: { $first: "$content" }, // Use first message as title
-          time: { $first: "$timestamp" },
-          lastUpdated: { $max: "$timestamp" }
-        }
-      },
-      { $sort: { lastUpdated: -1 } }
-    ]);
-
-    return NextResponse.json(sessions);
-  } catch (error) {
-    console.error("Failed to fetch messages:", error);
-    return NextResponse.json({ error: "Failed to fetch messages" }, { status: 500 });
+    return NextResponse.json(messages);
+  } catch (error: any) {
+    console.error("[MESSAGES_GET_ERROR]", error);
+    return NextResponse.json({ error: "Failed to fetch messages", details: error.message }, { status: 500 });
   }
 }
 
-
 /**
  * DELETE /api/messages
- * Clears all messages for the authenticated user
+ * Clears messages for a specific threadId
  */
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userId = (session.user as any).id;
+    const { searchParams } = new URL(request.url);
+    const threadId = searchParams.get("threadId");
+
+    if (!threadId) {
+      return NextResponse.json({ error: "threadId is required" }, { status: 400 });
     }
 
     await connectToDatabase();
 
-    // Remove only this user's messages
-    await Message.deleteMany({ userId: session.user.email });
+    // Remove only this user's messages within this thread
+    await Message.deleteMany({ threadId, userId });
 
-    return NextResponse.json({ message: "Chat history cleared" });
-  } catch (error) {
-    console.error("Failed to clear messages:", error);
-    return NextResponse.json({ error: "Failed to clear chat history" }, { status: 500 });
+    return NextResponse.json({ message: "Thread messages cleared" });
+  } catch (error: any) {
+    console.error("[MESSAGES_DELETE_ERROR]", error);
+    return NextResponse.json({ error: "Failed to clear messages", details: error.message }, { status: 500 });
   }
 }

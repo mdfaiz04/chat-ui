@@ -1,7 +1,8 @@
 "use client";
 
-// useState to track whether the message was just copied
 import { useState } from "react";
+import { Copy, Check, User, Bot, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface MessageProps {
   role: "user" | "assistant";
@@ -11,10 +12,6 @@ interface MessageProps {
 }
 
 export default function Message({ role, content, timestamp, image }: MessageProps) {
-
-  // Track if this specific message was just copied
-
-  // When true, we show "Copied!" instead of the copy icon
   const [copied, setCopied] = useState(false);
 
   const formattedTime = new Date(timestamp).toLocaleTimeString([], {
@@ -24,98 +21,78 @@ export default function Message({ role, content, timestamp, image }: MessageProp
 
   const isUser = role === "user";
 
-  // This function copies the message text to the user's clipboard
   const handleCopy = async () => {
     try {
-      // navigator.clipboard is the browser's built-in clipboard API
       await navigator.clipboard.writeText(content);
-
-      // Show "Copied!" feedback for 2 seconds then reset
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000); // After 2000ms (2s), set back to false
+      setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       console.error("Failed to copy:", error);
     }
   };
 
   return (
-    // "message-animate" applies our custom fade-in animation from globals.css
-    <div className={`flex w-full mb-4 message-animate ${isUser ? "justify-end" : "justify-start"}`}>
-
-      {/* Bot avatar — only show on the LEFT side (bot messages) */}
-      {!isUser && (
-        <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center
-                        text-white text-xs font-bold mr-2 flex-shrink-0 self-end mb-5">
-          AI
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}
+    >
+      <div className={`flex flex-col max-w-[85%] md:max-w-[70%] ${isUser ? "items-end" : "items-start"}`}>
+        
+        {/* Header Area (Role & Time) */}
+        <div className={`flex items-center gap-2 mb-2 px-1 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-zinc-600 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
+          <div className={`flex items-center gap-1.5 ${isUser ? "text-blue-600 dark:text-blue-400" : ""}`}>
+             {isUser ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3 text-indigo-500" />}
+             <span>{isUser ? "You" : "Nexus AI"}</span>
+          </div>
+          <span className="opacity-40">•</span>
+          <span>{formattedTime}</span>
         </div>
-      )}
 
-      <div className={`flex flex-col max-w-[75%] ${isUser ? "items-end" : "items-start"}`}>
-
-        {/* Role label above the bubble */}
-        <span className="text-xs text-gray-400 dark:text-gray-500 mb-1 px-1">
-          {isUser ? "You" : "AI Assistant"}
-        </span>
-
-        {/* Message bubble */}
-        {/* "group" is a Tailwind trick — lets child elements react to hovering the parent */}
-        <div className="relative group">
+        {/* Message Bubble container */}
+        <div className="relative group w-full">
           <div
-            className={`px-4 py-2 rounded-2xl text-sm leading-relaxed shadow-sm whitespace-pre-line ${isUser
-              ? "bg-blue-500 text-white rounded-br-none"
-              : "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-bl-none"
-              }`}
+            className={`px-6 py-4 rounded-[1.5rem] text-[15px] leading-relaxed shadow-sm whitespace-pre-line border transition-all ${
+              isUser
+                ? "bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-tr-none border-blue-500/10 shadow-blue-500/10"
+                : "bg-white dark:bg-zinc-900 text-gray-800 dark:text-zinc-200 rounded-tl-none border-gray-100 dark:border-white/5 shadow-gray-200/20 dark:shadow-none"
+            }`}
           >
             {image && (
-              <div className="mb-2 overflow-hidden rounded-lg border border-gray-100 dark:border-zinc-700">
-                <img src={image} alt="Uploaded content" className="max-w-full h-auto object-cover max-h-64" />
+              <div className="mb-4 overflow-hidden rounded-2xl border border-white/10 shadow-lg">
+                <img src={image} alt="Nexus AI Context" className="max-w-full h-auto object-cover max-h-96" />
               </div>
             )}
-            {content}
+            
+            <div className="font-medium">
+              {content}
+            </div>
+
+            {/* AI Magic Feedback - Subtle visual cue for AI messages */}
+            {!isUser && (
+               <div className="absolute top-1 right-2 opacity-10">
+                  <Sparkles className="w-12 h-12 rotate-[-15deg] text-indigo-500" />
+               </div>
+            )}
           </div>
 
-          {/* Copy button — hidden by default, appears on hover */}
-          {/* "opacity-0 group-hover:opacity-100" = invisible until parent is hovered */}
+          {/* Floating Actions on Hover */}
           <button
             onClick={handleCopy}
-            className={`absolute -top-2 ${isUser ? "-left-8" : "-right-8"}
-                        opacity-0 group-hover:opacity-100 transition-opacity duration-200
-                        bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600
-                        rounded-full p-1 shadow-sm hover:bg-gray-50`}
-            title="Copy message" // Tooltip on hover
+            className={`absolute top-2 ${isUser ? "-left-12" : "-right-12"}
+                        opacity-0 group-hover:opacity-100 transition-all duration-300
+                        bg-white dark:bg-zinc-800 border border-gray-100 dark:border-white/10
+                        rounded-xl p-2.5 shadow-xl hover:scale-110 active:scale-95`}
+            title="Secure Copy"
           >
-            {/* Show checkmark when copied, clipboard icon when not */}
             {copied ? (
-              // Checkmark SVG icon
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
+              <Check className="w-3.5 h-3.5 text-green-500 stroke-[3]" />
             ) : (
-              // Clipboard SVG icon
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-              </svg>
+              <Copy className="w-3.5 h-3.5 text-gray-400 dark:text-zinc-500" />
             )}
           </button>
         </div>
-
-        {/* Timestamp */}
-        <span className="text-xs text-gray-400 dark:text-gray-500 mt-1 px-1">
-          {formattedTime}
-        </span>
-
       </div>
-
-      {/* User avatar — only show on the RIGHT side (user messages) */}
-      {isUser && (
-        <div className="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center
-                        justify-center text-gray-600 dark:text-gray-300 text-xs font-bold
-                        ml-2 flex-shrink-0 self-end mb-5">
-          You
-        </div>
-      )}
-
-    </div>
+    </motion.div>
   );
 }

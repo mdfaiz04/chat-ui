@@ -2,43 +2,48 @@ import mongoose, { Schema, model, models } from "mongoose";
 
 /**
  * Message Schema for MongoDB
+ * - threadId: The conversation this message belongs to
+ * - userId: The user who owns this message
  * - role: 'user' or 'assistant'
  * - content: text of the message
  * - model: the AI model name used for this message
  * - image: optional image URL if an image was uploaded
- * - timestamp: when the message was created
  */
-const MessageSchema = new Schema({
-  chatId: {
-    type: String,
-    required: false,
+const MessageSchema = new Schema(
+  {
+    threadId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Thread",
+      required: true,
+      index: true,
+    },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    role: {
+      type: String,
+      enum: ["user", "assistant"],
+      required: true,
+    },
+    content: {
+      type: String,
+      required: true,
+    },
+    model: {
+      type: String,
+    },
+    image: {
+      type: String,
+    },
   },
-  userId: {
-    type: String,
-    required: true, // Tied to Google Email
-  },
-  role: {
-    type: String,
-    enum: ["user", "assistant"],
-    required: true,
-  },
-  content: {
-    type: String,
-    required: true,
-  },
-  model: {
-    type: String,
-  },
-  image: {
-    type: String,
-  },
-  timestamp: {
-    type: Date,
-    default: Date.now,
-  },
-});
+  {
+    timestamps: true, // Automatically manages createdAt and updatedAt
+  }
+);
 
-// Check if the model already exists to prevent duplication errors during Next.js hot-reloads
+// Prevent re-compiling the model
 const Message = models.Message || model("Message", MessageSchema);
 
 export default Message;

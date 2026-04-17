@@ -7,13 +7,12 @@ import Message from "@/models/Message";
 import { getModelConfig, DEFAULT_MODEL } from "@/lib/models";
 
 // ─────────────────────────────────────────────
-// GEMINI
+// GEN AI HANDLERS (GEMINI, OLLAMA, OPENAI)
 // ─────────────────────────────────────────────
+
 async function callGeminiAPI(prompt: string, modelId: string): Promise<string> {
   const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GOOGLE_API_KEY missing");
-
-  console.log(`[GEMINI] Calling model: ${modelId}`);
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`,
@@ -35,14 +34,8 @@ async function callGeminiAPI(prompt: string, modelId: string): Promise<string> {
   return data.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
 }
 
-// ─────────────────────────────────────────────
-// OLLAMA
-// ─────────────────────────────────────────────
 async function callOllamaAPI(prompt: string, modelId: string): Promise<string> {
   const endpoint = "http://localhost:11434/api/generate";
-
-  console.log(`[OLLAMA] Calling model: ${modelId}`);
-
   const res = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -62,14 +55,9 @@ async function callOllamaAPI(prompt: string, modelId: string): Promise<string> {
   return data.response || "No response";
 }
 
-// ─────────────────────────────────────────────
-// OPENAI
-// ─────────────────────────────────────────────
 async function callOpenAIAPI(prompt: string, modelId: string): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY missing");
-
-  console.log(`[OPENAI] Calling model: ${modelId}`);
 
   const openai = new OpenAI({ apiKey });
   const completion = await openai.chat.completions.create({
@@ -81,45 +69,35 @@ async function callOpenAIAPI(prompt: string, modelId: string): Promise<string> {
 }
 
 // ─────────────────────────────────────────────
-// MAIN
+// MAIN API ROUTE
 // ─────────────────────────────────────────────
+
 export async function POST(req: NextRequest) {
   try {
-    console.log("\n=== API REQUEST RECEIVED ===");
-
-    // 🔐 AUTH CHECK — reject unauthenticated users
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.email) {
-      console.log("[AUTH] ❌ Unauthorized request");
-      return NextResponse.json(
-        { error: "Unauthorized. Please sign in to use the chat." },
-        { status: 401 }
-      );
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userEmail = session.user.email;
-    console.log(`[AUTH] ✅ Authenticated: ${userEmail}`);
+    const userId = (session.user as any).id;
+    if (!userId) {
+      return NextResponse.json({ error: "User ID missing from session" }, { status: 400 });
+    }
 
     await connectToDatabase();
 
-    const body = await req.json();
-    const { message, model, chatId } = body;
+    const { message, threadId, model } = await req.json();
 
-    const chatContent = message || body.content;
+    if (!threadId) {
+      return NextResponse.json({ error: "threadId is required" }, { status: 400 });
+    }
+
+    if (!message) {
+      return NextResponse.json({ error: "Message content is required" }, { status: 400 });
+    }
+
     const modelValue = model || DEFAULT_MODEL;
-
-    // 🔥 FORCE REAL AI (NO MOCK EVER)
-    console.log("ENV USE_REAL_AI:", process.env.USE_REAL_AI);
-
-    if (!chatId) {
-      return NextResponse.json({ error: "chatId required" }, { status: 400 });
-    }
-
-    if (!chatContent) {
-      return NextResponse.json({ error: "Message required" }, { status: 400 });
-    }
-
     let modelConfig;
     try {
       modelConfig = getModelConfig(modelValue);
@@ -127,28 +105,24 @@ export async function POST(req: NextRequest) {
       modelConfig = getModelConfig(DEFAULT_MODEL);
     }
 
-    console.log(
-      `[ROUTER] Model: "${modelValue}" → ${modelConfig.provider} → ${modelConfig.model}`
-    );
-
-    // History — scoped to user
-    const history = await Message.find({ chatId, userId: userEmail })
-      .sort({ timestamp: -1 })
+    // 1. Fetch History Scoped to Thread
+    const history = await Message.find({ threadId, userId })
+      .sort({ createdAt: -1 })
       .limit(6)
       .lean();
 
     history.reverse();
 
     const historyText = history
-      .map((m: any) => `${m.role === "user" ? "User" : "AI"}: ${m.content}`)
+      .map((m: any) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
       .join("\n");
 
-    // Save user message — tied to user
+    // 2. Save User Message
     await Message.create({
-      chatId,
-      userId: userEmail,
+      threadId,
+      userId,
       role: "user",
-      content: chatContent,
+      content: message,
       model: modelValue,
     });
 
@@ -157,63 +131,48 @@ You are a helpful AI assistant.
 
 ${historyText}
 
-User: ${chatContent}
-AI:
+User: ${message}
+Assistant:
 `;
 
     let reply = "";
+    const { provider, model: apiModel } = modelConfig;
 
     try {
-      const { provider, model: apiModel } = modelConfig;
-
       if (provider === "gemini") {
-        console.log("[ROUTER] → GEMINI");
         reply = await callGeminiAPI(prompt, apiModel);
       } else if (provider === "ollama") {
-        console.log("[ROUTER] → OLLAMA");
         reply = await callOllamaAPI(prompt, apiModel);
       } else if (provider === "openai") {
-        console.log("[ROUTER] → OPENAI");
         reply = await callOpenAIAPI(prompt, apiModel);
       } else {
-        throw new Error("Unknown provider");
+        throw new Error("Unknown AI provider selected");
       }
     } catch (err: any) {
-      console.error("[AI ERROR]", err.message);
-
-      return NextResponse.json(
-        { error: "AI failed", details: err.message },
-        { status: 502 }
-      );
+      return NextResponse.json({ error: "AI invocation failed", details: err.message }, { status: 502 });
     }
 
-    if (!reply || reply.trim() === "") {
-      return NextResponse.json(
-        { error: "Empty AI response" },
-        { status: 502 }
-      );
+    if (!reply) {
+      return NextResponse.json({ error: "Empty AI response" }, { status: 502 });
     }
 
+    // 3. Save Assistant Message
     const aiMsg = await Message.create({
-      chatId,
-      userId: userEmail,
+      threadId,
+      userId,
       role: "assistant",
       content: reply,
       model: modelValue,
     });
 
-    console.log(`[ROUTER] ✅ Saved (${reply.length} chars)`);
-
+    // Return the response as plain text (or we could return JSON)
+    // Most chat frontends expect the text response for streaming/immediate display
     return new Response(aiMsg.content, {
       status: 201,
       headers: { "Content-Type": "text/plain" },
     });
   } catch (err: any) {
-    console.error("[CRITICAL ERROR]", err);
-
-    return NextResponse.json(
-      { error: "Server error", details: err.message },
-      { status: 500 }
-    );
+    console.error("[CHAT_ERROR]", err);
+    return NextResponse.json({ error: "Internal Server Error", details: err.message }, { status: 500 });
   }
 }

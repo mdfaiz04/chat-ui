@@ -1,13 +1,10 @@
-"use client"; // Enables client-side rendering (required for React hooks)
+"use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Mic, Send, Plus, ChevronDown, Image as ImageIcon, File as FileIcon } from "lucide-react";
-import { motion } from "framer-motion";
+import { Mic, Send, Plus, ChevronDown, Image as ImageIcon, File as FileIcon, Sparkles, Brain, Cpu } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { MODELS } from "@/lib/models";
 
-/**
- * Props for InputArea component
- */
 interface InputAreaProps {
   onSendMessage: (message: string) => void;
   isLoading: boolean;
@@ -16,18 +13,12 @@ interface InputAreaProps {
   setMessages: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
-// Speech Recognition setup - TypeScript-safe and SSR compatible
 const SpeechRecognition =
   typeof window !== "undefined"
     ? (window as any).SpeechRecognition ||
     (window as any).webkitSpeechRecognition
     : null;
 
-
-/**
- * @component InputArea
- * @desc Handles user input, message sending, and textarea behavior with Upload and Voice features
- */
 export default function InputArea({
   onSendMessage,
   isLoading,
@@ -35,34 +26,23 @@ export default function InputArea({
   setSelectedModel,
   setMessages
 }: InputAreaProps) {
+  const [input, setInput] = useState("");
+  const [openModel, setOpenModel] = useState(false);
+  const [openUpload, setOpenUpload] = useState(false);
+  const [isListening, setIsListening] = useState(false);
 
-  // ---------------- STATE ----------------
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const uploadRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
 
-  const [input, setInput] = useState(""); // Stores user input text
-  const [openModel, setOpenModel] = useState(false); // Controls custom dropdown visibility
-  const [openUpload, setOpenUpload] = useState(false); // Controls upload menu visibility
-  const [isListening, setIsListening] = useState(false); // Voice state
-
-  // ---------------- REFS ----------------
-
-  const textareaRef = useRef<HTMLTextAreaElement>(null); // Reference for textarea
-  const dropdownRef = useRef<HTMLDivElement>(null); // Reference for dropdown
-  const uploadRef = useRef<HTMLDivElement>(null); // Reference for upload menu
-  const recognitionRef = useRef<any>(null); // Ref for SpeechRecognition instance
-
-  /**
-   * Auto-resizes textarea based on content
-   */
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 150)}px`;
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
     }
   }, [input]);
 
-  /**
-   * Handles outside clicks for dropdowns
-   */
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -76,33 +56,24 @@ export default function InputArea({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  /**
-   * Initialize speech recognition
-   */
   useEffect(() => {
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.lang = "en-US";
-
       recognition.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
         setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
         setIsListening(false);
       };
-
       recognition.onend = () => setIsListening(false);
       recognition.onerror = () => setIsListening(false);
-
       recognitionRef.current = recognition;
     }
   }, []);
 
-  // ---------------- HANDLERS ----------------
-
   const handleMic = () => {
-    if (!recognitionRef.current) return alert("Speech recognition is not supported in this browser.");
-
+    if (!recognitionRef.current) return;
     if (!isListening) {
       recognitionRef.current.start();
       setIsListening(true);
@@ -110,40 +81,6 @@ export default function InputArea({
       recognitionRef.current.stop();
       setIsListening(false);
     }
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const imageUrl = URL.createObjectURL(file);
-    setMessages(prev => [
-      ...prev,
-      {
-        id: Date.now(),
-        role: "user",
-        content: "🖼 Image uploaded",
-        image: imageUrl,
-        timestamp: new Date().toISOString()
-      }
-    ]);
-    setOpenUpload(false);
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setMessages(prev => [
-      ...prev,
-      {
-        id: Date.now(),
-        role: "user",
-        content: `📄 File uploaded: ${file.name}`,
-        timestamp: new Date().toISOString()
-      }
-    ]);
-    setOpenUpload(false);
   };
 
   const handleSend = () => {
@@ -159,129 +96,137 @@ export default function InputArea({
     }
   };
 
-  // MODELS is imported from @/lib/models — single source of truth
-
-  // ---------------- UI ----------------
+  const currentModelLabel = MODELS.find(m => m.value === selectedModel)?.label || "Select Model";
 
   return (
     <motion.div
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.3 }}
-      className="w-full max-w-3xl mx-auto bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border border-gray-200 dark:border-zinc-700/50 rounded-2xl p-2 shadow-xl focus-within:shadow-2xl focus-within:border-blue-500/30 transition-all duration-300 group"
+      initial={{ y: 20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      className="relative w-full max-w-4xl mx-auto"
     >
-
-      {/* TEXTAREA INPUT */}
-      <textarea
-        ref={textareaRef}
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Ask anything..."
-        rows={1}
-        disabled={isLoading}
-        className="w-full bg-transparent outline-none text-gray-900 dark:text-zinc-100 px-3 py-2 resize-none max-h-[150px] overflow-y-auto leading-relaxed placeholder-gray-400 dark:placeholder-zinc-500 font-medium"
-        style={{ minHeight: "44px" }}
-      />
-
-      {/* BOTTOM CONTROLS */}
-      <div className="flex items-center justify-between mt-1 px-1 pb-1">
-
-        {/* LEFT SIDE: Upload Menu */}
-        <div className="flex items-center gap-1">
-          <div className="relative" ref={uploadRef}>
-            <button
-              type="button"
-              onClick={() => setOpenUpload(!openUpload)}
-              className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
-            >
-              <Plus className={`w-4 h-4 transition-transform duration-200 ${openUpload ? 'rotate-45' : ''}`} />
-            </button>
-
-            {/* UPLOAD DROPDOWN */}
-            {openUpload && (
-              <div className="absolute bottom-full mb-2 left-0 w-44 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-2xl z-50 overflow-hidden">
-                <div className="p-1">
-                  <label className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded-lg cursor-pointer transition-all">
-                    <ImageIcon className="w-4 h-4" />
-                    Upload Image
-                    <input type="file" accept="image/*" hidden onChange={handleImageUpload} />
-                  </label>
-                  <label className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded-lg cursor-pointer transition-all">
-                    <FileIcon className="w-4 h-4" />
-                    Upload File
-                    <input type="file" hidden onChange={handleFileUpload} />
-                  </label>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1 ml-1 px-2 py-1 rounded-lg text-xs font-bold uppercase tracking-wider text-gray-400">
-            Fast
-          </div>
+      <div className="relative group bg-white/80 dark:bg-zinc-900/80 backdrop-blur-3xl border border-gray-200/50 dark:border-white/5 rounded-[2rem] p-3 shadow-2xl transition-all duration-500 hover:shadow-blue-500/5 focus-within:ring-1 focus-within:ring-blue-500/20">
+        
+        {/* Input Field Area */}
+        <div className="flex flex-col gap-2 min-h-[60px] max-h-[300px] overflow-hidden">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask anything or use '/' for commands..."
+            rows={1}
+            disabled={isLoading}
+            className="w-full bg-transparent outline-none text-gray-800 dark:text-zinc-100 px-4 py-3 resize-none leading-relaxed placeholder-gray-400 dark:placeholder-zinc-600 font-medium text-[16px]"
+          />
         </div>
 
-        {/* RIGHT SIDE: Model Selection, Mic, Send */}
-        <div className="flex items-center gap-2">
-
-          <div className="relative" ref={dropdownRef}>
-            <button
-              type="button"
-              onClick={() => setOpenModel(!openModel)}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-zinc-800/50 hover:bg-gray-100 dark:hover:bg-zinc-800 border border-gray-200 dark:border-zinc-700/50 text-xs font-semibold text-gray-700 dark:text-zinc-200 transition-all duration-200"
-            >
-              {MODELS.find(m => m.value === selectedModel)?.label || selectedModel}
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${openModel ? 'rotate-180' : ''}`} />
-            </button>
-
-            {openModel && (
-              <div className="absolute bottom-full mb-2 right-0 w-48 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-2xl z-50 overflow-hidden">
-                <div className="p-1">
-                  {MODELS.map((model) => (
-                    <button
-                      key={model.value}
-                      type="button"
-                      onClick={() => {
-                        setSelectedModel(model.value);
-                        setOpenModel(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-all duration-150 ${selectedModel === model.value
-                        ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium"
-                        : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800"
-                        }`}
-                    >
-                      {model.label}
+        {/* Toolbar Area */}
+        <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-white/5">
+          <div className="flex items-center gap-2">
+            <div className="relative" ref={uploadRef}>
+              <button
+                type="button"
+                onClick={() => setOpenUpload(!openUpload)}
+                className="p-2.5 rounded-2xl text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-all active:scale-90"
+              >
+                <Plus className={`w-5 h-5 transition-transform duration-300 ${openUpload ? 'rotate-45 text-blue-500' : ''}`} />
+              </button>
+              
+              <AnimatePresence>
+                {openUpload && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute bottom-full mb-4 left-0 w-52 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-white/10 rounded-2xl shadow-2xl p-2 z-[60]"
+                  >
+                    <button className="flex items-center gap-3 w-full px-3 py-2.5 text-xs font-black text-gray-500 uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-colors">
+                      <ImageIcon className="w-4 h-4" />
+                      Image context
                     </button>
-                  ))}
-                </div>
-              </div>
-            )}
+                    <button className="flex items-center gap-3 w-full px-3 py-2.5 text-xs font-black text-gray-500 uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-colors">
+                      <FileIcon className="w-4 h-4" />
+                      Knowledge base
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <div className="h-6 w-[1px] bg-gray-100 dark:bg-white/5 mx-1" />
+
+            <div className="relative" ref={dropdownRef}>
+              <button
+                type="button"
+                onClick={() => setOpenModel(!openModel)}
+                className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 text-[10px] font-black uppercase tracking-[0.1em] text-gray-500 dark:text-zinc-400 transition-all active:scale-95"
+              >
+                <Cpu className="w-3.5 h-3.5 text-blue-500" />
+                {currentModelLabel}
+                <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${openModel ? 'rotate-180 text-blue-500' : ''}`} />
+              </button>
+
+              <AnimatePresence>
+                {openModel && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute bottom-full mb-4 right-0 w-64 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-white/10 rounded-2xl shadow-2xl p-2 z-[60]"
+                  >
+                    {MODELS.map((model) => (
+                      <button
+                        key={model.value}
+                        type="button"
+                        onClick={() => {
+                          setSelectedModel(model.value);
+                          setOpenModel(false);
+                        }}
+                        className={`group flex flex-col gap-0.5 w-full text-left px-4 py-3 rounded-xl transition-all ${
+                          selectedModel === model.value
+                            ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+                            : "text-gray-500 dark:text-zinc-500 hover:bg-gray-50 dark:hover:bg-white/5"
+                        }`}
+                      >
+                        <span className="text-[11px] font-black uppercase tracking-widest">{model.label}</span>
+                        <span className={`text-[9px] font-bold ${selectedModel === model.value ? "text-blue-100 opacity-80" : "text-gray-400"}`}>
+                           Engine: {model.provider}
+                        </span>
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleMic}
-            className={`p-2 rounded-xl transition-all duration-200 ${isListening
-              ? "bg-red-500 text-white animate-pulse"
-              : "text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800"
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleMic}
+              className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all active:scale-75 ${
+                isListening
+                  ? "bg-rose-500 text-white shadow-lg shadow-rose-500/20"
+                  : "text-gray-400 hover:text-blue-500 hover:bg-blue-500/5"
               }`}
-          >
-            <Mic className="w-4 h-4" />
-          </button>
+            >
+              <Mic className="w-5 h-5" />
+            </button>
 
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || isLoading}
-            className={`p-2 rounded-xl transition-all duration-300 flex items-center justify-center
-              ${input.trim() && !isLoading
-                ? "bg-black dark:bg-white text-white dark:text-black hover:opacity-90 scale-100 shadow-md"
-                : "bg-gray-100 dark:bg-zinc-800 text-gray-300 dark:text-zinc-600 scale-95"
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || isLoading}
+              className={`group w-12 h-12 flex items-center justify-center rounded-2xl transition-all duration-300 relative overflow-hidden ${
+                input.trim() && !isLoading
+                  ? "bg-blue-600 text-white shadow-xl shadow-blue-500/30 hover:scale-105 active:scale-90"
+                  : "bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-zinc-600"
               }`}
-          >
-            <Send className="w-4 h-4" />
-          </button>
+            >
+              <div className="absolute inset-0 bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <Send className="relative w-5 h-5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            </button>
+          </div>
         </div>
-
       </div>
     </motion.div>
   );

@@ -1,243 +1,292 @@
-import { useState, useEffect } from "react";
-import { Search, Trash, X, History, MessageSquare, Code, Image as ImageIcon, Plus } from "lucide-react";
+"use client";
 
-/**
- * Props for Sidebar component
- */
-interface SidebarProps {
-  isOpen: boolean;   // Controls sidebar visibility
-  onClose: () => void; // Function to close sidebar
-  onSelectChat: (id: string) => void; // Function to load a specific chat
-  onSendMessage: (content: string) => void; // Function to send a message (added)
-  onNewChat: () => void; // Function to start a new chat (added)
-  onClearHistory?: () => void; // Function to clear all chat history (new)
+import { useState, useEffect, useRef } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { 
+  Plus, 
+  MessageSquare, 
+  Trash2, 
+  LogOut, 
+  PanelLeftClose, 
+  PanelLeftOpen, 
+  Search, 
+  Command, 
+  Settings, 
+  Sparkles,
+  User,
+  History,
+  MoreVertical,
+  ChevronUp
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { signOut, useSession } from "next-auth/react";
+import { useSidebar } from "@/lib/context/SidebarContext";
+
+interface Thread {
+  _id: string;
+  title: string;
+  createdAt: string;
 }
 
-/**
- * @component Sidebar
- * @desc Displays chat sessions grouped from MongoDB with selection support
- */
-export default function Sidebar({ isOpen, onClose, onSelectChat, onSendMessage, onNewChat, onClearHistory }: SidebarProps) {
-
-  // ---------------- STATE ----------------
-
-  const [sessions, setSessions] = useState<any[]>([]);
+export default function Sidebar() {
+  const router = useRouter();
+  const params = useParams();
+  const { data: session } = useSession();
+  const { isOpen, setIsOpen } = useSidebar();
+  
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // ---------------- EFFECTS ----------------
+  const menuRef = useRef<HTMLDivElement>(null);
+  const activeThreadId = params?.threadId as string;
 
-  /**
-   * Fetch unique chat sessions whenever sidebar opens
-   */
   useEffect(() => {
-    if (isOpen) {
-      const fetchSessions = async () => {
-        setLoading(true);
-        try {
-          const response = await fetch("/api/messages");
-          const data = await response.json();
-          if (response.ok) {
-            setSessions(data);
-          }
-        } catch (error) {
-          console.error("Failed to fetch chat sessions:", error);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchSessions();
-    }
-  }, [isOpen]);
+    fetchThreads();
+  }, [activeThreadId]);
 
-  // ---------------- DERIVED STATE ----------------
+  // Click outside listener for the profile menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-  const filteredSessions = sessions.filter((session) =>
-    session.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // ---------------- HANDLERS ----------------
-
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (window.confirm("Delete this conversation?")) {
-      // For now we just filter locally, but in real app you'd call a DELETE session API
-      setSessions((prev) => prev.filter((item) => item._id !== id));
+  const fetchThreads = async () => {
+    try {
+      const res = await fetch("/api/thread");
+      if (res.ok) {
+        const data = await res.json();
+        setThreads(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch threads:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // ---------------- UI ----------------
+  const createNewThread = async () => {
+    router.push("/");
+    if (window.innerWidth < 1024) setIsOpen(false);
+  };
+
+  const deleteThread = async (e: React.MouseEvent, threadId: string) => {
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to delete this chat?")) return;
+    
+    try {
+      const res = await fetch(`/api/thread/${threadId}`, { method: "DELETE" });
+      if (res.ok) {
+        setThreads(prev => prev.filter(t => t._id !== threadId));
+        if (activeThreadId === threadId) router.push("/");
+      }
+    } catch (error) {
+       console.error("Delete failed:", error);
+    }
+  };
+
+  const clearAllHistory = async () => {
+    if (!confirm("This will permanently delete ALL your chat history. Continue?")) return;
+    
+    setIsDeletingAll(true);
+    try {
+      const res = await fetch("/api/thread", { method: "DELETE" });
+      if (res.ok) {
+        setThreads([]);
+        router.push("/");
+      }
+    } catch (error) {
+      console.error("Clear all failed:", error);
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
+  const filteredThreads = threads.filter(thread => 
+    thread.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <>
-      {/* OVERLAY */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity"
-          onClick={onClose}
-        ></div>
-      )}
-
-      {/* SIDEBAR CONTAINER */}
-      <div
-        className={`fixed top-0 left-0 h-full w-[280px] sm:w-72 
-                   bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl
-                   border-r border-gray-200 dark:border-zinc-700
-                   shadow-2xl z-50 transform transition-all duration-300 ease-in-out
-                   ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
+      <motion.aside
+        initial={false}
+        animate={{ 
+          width: isOpen ? 280 : 0,
+          opacity: isOpen ? 1 : 0
+        }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        className={`fixed lg:relative flex flex-col h-screen bg-white dark:bg-[#080a0f] border-r border-gray-100 dark:border-white/5 z-40 overflow-hidden shrink-0 shadow-2xl lg:shadow-none transition-colors duration-500`}
       >
-        <div className="flex flex-col h-full text-gray-900 dark:text-gray-100 px-3 py-4 space-y-4">
-
-          {/* PRIMARY ACTION: New Chat */}
-          <div className="px-2">
-            <button
-              onClick={() => {
-                onNewChat();
-                onClose();
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl 
-                         bg-blue-500 text-white shadow-sm hover:shadow-md
-                         hover:bg-blue-600 active:scale-95
-                         transition-all duration-200 text-left group"
-            >
-              <Plus size={20} className="text-blue-100 group-hover:rotate-90 transition-transform duration-300" />
-              <div className="flex flex-col items-start leading-none gap-1">
-                <span className="text-sm font-semibold">New Chat</span>
-                <span className="text-[10px] text-blue-100/80">Start a new conversation</span>
+        <div className="flex flex-col h-full w-[280px]">
+          
+          {/* Header */}
+          <div className="p-6 pb-2 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <Command className="w-4 h-4 text-white" />
               </div>
+              <span className="text-lg font-black text-gray-900 dark:text-white tracking-tighter">Nexus AI</span>
+            </div>
+            <button 
+              onClick={() => setIsOpen(false)}
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-all text-gray-400 hover:text-blue-500 lg:hidden"
+            >
+              <PanelLeftClose className="w-4 h-4" />
             </button>
           </div>
 
-          {/* TOP SECTION: Workspace & Features */}
-          <div className="flex flex-col">
-            <div className="flex justify-between items-center px-2 mb-4">
-              <h2 className="font-bold text-sm tracking-tight text-gray-500 dark:text-gray-400 uppercase">
-                ✨ Workspace
-              </h2>
-              <button
-                onClick={onClose}
-                className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-gray-400 transition-colors"
-                aria-label="Close sidebar"
+          {/* New Chat */}
+          <div className="px-4 mb-6 mt-4">
+            <button
+              onClick={createNewThread}
+              className="w-full flex items-center gap-3 px-4 py-3 bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-xl text-gray-800 dark:text-zinc-200 font-bold text-xs transition-all shadow-sm group"
+            >
+              <Plus className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span>New Conversation</span>
+              <Sparkles className="w-3.5 h-3.5 ml-auto text-yellow-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
+          </div>
+
+          {/* Search */}
+          <div className="px-4 mb-6">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <input 
+                  type="text"
+                  placeholder="History..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-gray-50 dark:bg-zinc-900/50 border border-transparent focus:border-blue-500/20 dark:focus:border-blue-500/30 rounded-lg text-[11px] font-semibold focus:ring-4 focus:ring-blue-500/5 outline-none transition-all placeholder:text-gray-400"
+                />
+              </div>
+              <button 
+                onClick={clearAllHistory}
+                disabled={threads.length === 0 || isDeletingAll}
+                className="p-2 hover:bg-rose-500/10 text-gray-400 hover:text-rose-500 rounded-lg transition-all disabled:opacity-30"
+                title="Clear All"
               >
-                <X className="w-4 h-4" />
+                <History className="w-3.5 h-3.5" />
               </button>
             </div>
+          </div>
 
-            <div className="flex flex-col gap-2">
-              {[
-                { icon: MessageSquare, label: "Chat & Brainstorm", prompt: "Chat" },
-                { icon: Search, label: "Research & Summarize", prompt: "Research" },
-                { icon: Code, label: "Code & Develop", prompt: "Code" },
-                { icon: ImageIcon, label: "Create Images", prompt: "Images" },
-              ].map((item, index) => (
-                <button
-                  key={index}
-                  onClick={() => {
-                    onSendMessage(item.prompt);
-                    onClose();
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl 
-                             bg-zinc-100 dark:bg-zinc-800 
-                             hover:bg-zinc-200 dark:hover:bg-zinc-700 
-                             text-gray-700 dark:text-zinc-200
-                             transition-all duration-200 text-left group"
+          {/* Thread List */}
+          <div className="flex-1 overflow-y-auto px-2 space-y-0.5 custom-scrollbar">
+            {isLoading ? (
+              <div className="space-y-2 p-2">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-10 w-full bg-gray-100 dark:bg-white/5 rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : filteredThreads.length > 0 ? (
+              filteredThreads.map((thread) => (
+                <div key={thread._id} className="relative group/item">
+                  <button
+                    onClick={() => {
+                      router.push(`/chat/${thread._id}`);
+                      if (window.innerWidth < 1024) setIsOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all relative ${
+                      activeThreadId === thread._id 
+                      ? "bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white font-bold" 
+                      : "text-gray-500 dark:text-zinc-500 hover:bg-gray-50 dark:hover:bg-white/5 font-medium"
+                    }`}
+                  >
+                    <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+                    <span className="flex-1 text-left text-xs truncate tracking-tight">
+                      {thread.title}
+                    </span>
+                  </button>
+                  
+                  <button
+                    onClick={(e) => deleteThread(e, thread._id)}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 opacity-0 group-hover/item:opacity-100 hover:bg-rose-500/10 text-gray-400 hover:text-rose-500 rounded-lg transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 px-4 opacity-20">
+                <History className="w-5 h-5 mb-2" />
+                <p className="text-[9px] uppercase font-black tracking-widest">No history</p>
+              </div>
+            )}
+          </div>
+
+          {/* Minimal Profile Section - ChatGPT Style */}
+          <div className="p-3 mt-auto relative" ref={menuRef}>
+            <AnimatePresence>
+              {isMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute bottom-[calc(100%-8px)] left-3 right-3 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-white/10 rounded-2xl shadow-2xl p-2 z-50"
                 >
-                  <item.icon size={18} className="text-gray-500 group-hover:text-blue-500 transition-colors" />
-                  <span className="text-sm font-medium">{item.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+                  <div className="px-3 py-2 border-b border-gray-100 dark:border-white/5 mb-2">
+                    <p className="text-xs font-black text-gray-900 dark:text-white truncate uppercase tracking-tighter">
+                      {session?.user?.name || "Member"}
+                    </p>
+                    <p className="text-[10px] text-gray-400 dark:text-zinc-600 truncate font-bold lowercase">
+                      {session?.user?.email}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => signOut({ callbackUrl: "/" })}
+                    className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-rose-500/5 text-rose-500 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all group"
+                  >
+                    <span>Sign Out</span>
+                    <LogOut className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-          <div className="border-t border-zinc-200 dark:border-zinc-800 my-2" />
-
-          {/* MIDDLE SECTION: Search */}
-          <div className="px-2">
-            <div className="relative group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-              <input
-                type="text"
-                placeholder="Search history..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-zinc-100 dark:bg-zinc-800 text-sm outline-none font-medium 
-                           pl-10 pr-3 py-2.5 rounded-full border border-transparent 
-                           focus:border-blue-500/30 focus:ring-4 focus:ring-blue-500/5 transition-all duration-200"
-              />
-            </div>
-          </div>
-
-          {/* NEW FEATURE: Clear All History */}
-          <div className="px-2">
             <button
-              onClick={() => {
-                if (onClearHistory) {
-                  onClearHistory();
-                  onClose();
-                }
-              }}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg 
-                         text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 
-                         transition-colors duration-200 text-left"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all ${
+                isMenuOpen ? "bg-gray-100 dark:bg-white/10 shadow-inner" : "hover:bg-gray-50 dark:hover:bg-white/5"
+              }`}
             >
-              <Trash size={18} />
-              <span className="text-sm font-medium">Clear All History</span>
+              <div className="w-8 h-8 rounded-lg overflow-hidden bg-white dark:bg-zinc-800 border border-gray-200 dark:border-white/10 flex items-center justify-center shrink-0">
+                {session?.user?.image ? (
+                  <img src={session.user.image} alt="User" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="font-black text-blue-600 uppercase text-xs">{session?.user?.name?.[0] || session?.user?.email?.[0] || "?"}</span>
+                )}
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-[11px] font-black text-gray-900 dark:text-white truncate uppercase tracking-tighter">
+                   {session?.user?.name || "Member"}
+                </p>
+              </div>
+              <ChevronUp className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-300 ${isMenuOpen ? "rotate-180" : ""}`} />
             </button>
           </div>
-
-          {/* BOTTOM SECTION: Chat History */}
-          <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-            <div className="flex items-center justify-between px-2 mb-2">
-              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                <History className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-wider">Recent Chats</span>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto scroll-smooth custom-scrollbar space-y-1">
-              {loading && sessions.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-8">
-                  <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                </div>
-              ) : filteredSessions.length > 0 ? (
-                filteredSessions.map((session) => (
-                  <div
-                    key={session._id}
-                    onClick={() => onSelectChat(session._id)}
-                    className="flex items-center gap-3 group cursor-pointer 
-                               rounded-xl px-3 py-2.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 
-                               transition-all duration-200"
-                  >
-                    <MessageSquare className="w-4 h-4 text-gray-400 group-hover:text-blue-500 shrink-0" />
-
-                    <div className="flex flex-col truncate flex-1 min-w-0">
-                      <span className="text-sm font-medium truncate group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors text-gray-700 dark:text-zinc-200">
-                        {session.title || "New Conversation"}
-                      </span>
-                      <span className="text-[10px] font-semibold text-gray-400 dark:text-zinc-500">
-                        {new Date(session.time).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                      </span>
-                    </div>
-
-                    <button
-                      onClick={(e) => handleDelete(session._id, e)}
-                      className="p-1 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all duration-200"
-                    >
-                      <Trash className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center p-8 text-center">
-                  <span className="text-gray-500 dark:text-zinc-500 text-xs font-medium">
-                    No chat history yet
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
-      </div>
+      </motion.aside>
+
+      {/* Mobile Backdrop */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsOpen(false)}
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 lg:hidden"
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }

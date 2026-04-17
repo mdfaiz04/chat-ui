@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import AuthProvider from "@/components/AuthProvider";
+import { SidebarProvider } from "@/lib/context/SidebarContext";
 
 // Load the Geist font — a clean, modern font great for UIs
 const geist = Geist({
@@ -25,7 +26,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${geist.className} antialiased`}>
         <AuthProvider>
-          {children}
+          <SidebarProvider>
+            {children}
+          </SidebarProvider>
         </AuthProvider>
       </body>
     </html>
