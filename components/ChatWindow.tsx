@@ -10,6 +10,7 @@ import { ChevronDown, Moon, Sun, Sparkles, Zap, Shield, Command, Globe, Info, Pa
 import { motion, AnimatePresence } from "framer-motion";
 import { DEFAULT_MODEL } from "@/lib/models";
 import { useSidebar } from "@/lib/context/SidebarContext";
+import { needsWebSearch } from "@/lib/webSearch";
 
 interface MessageType {
   _id?: string;
@@ -27,6 +28,7 @@ export default function ChatWindow() {
 
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSearchingWeb, setIsSearchingWeb] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -115,6 +117,7 @@ export default function ChatWindow() {
     };
 
     setMessages((prev) => [...prev, tempUserMsg]);
+    setIsSearchingWeb(needsWebSearch(content));
     setIsLoading(true);
 
     try {
@@ -130,8 +133,9 @@ export default function ChatWindow() {
 
       if (!response.ok || !response.body) throw new Error("Our intelligence systems are experiencing high traffic.");
 
-      // Stop global loading when the stream starts
+      // Stop global loading and searching state when the stream starts
       setIsLoading(false);
+      setIsSearchingWeb(false);
 
       // Create a blank placeholder message
       const aiMessageId = Date.now().toString();
@@ -167,6 +171,7 @@ export default function ChatWindow() {
       setTimeout(() => setAuthError(null), 5000);
     } finally {
       setIsLoading(false);
+      setIsSearchingWeb(false);
     }
   };
 
@@ -263,7 +268,16 @@ export default function ChatWindow() {
                     />
                   </motion.div>
                 ))}
-                {isLoading && <TypingIndicator />}
+                {isLoading && (
+                  isSearchingWeb ? (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2 text-sm text-blue-500 font-medium px-4">
+                      <Globe className="w-4 h-4 animate-spin" />
+                      Searching web...
+                    </motion.div>
+                  ) : (
+                    <TypingIndicator />
+                  )
+                )}
                 <div ref={messagesEndRef} className="h-4" />
               </div>
             </motion.div>

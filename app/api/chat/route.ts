@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/dbConnect";
 import Message from "@/models/Message";
 import { getModelConfig, DEFAULT_MODEL } from "@/lib/models";
+import { needsWebSearch, fetchWebContext, formatSearchContext } from "@/lib/webSearch";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // Max execution time for Vercel Serverless
@@ -56,7 +57,17 @@ export async function POST(req: NextRequest) {
       model: modelValue,
     });
 
-    const prompt = `You are a helpful AI assistant.\n\n${historyText}\n\nUser: ${message}\nAssistant:`;
+    // 2.5 Dynamic Web Search (RAG)
+    const shouldSearch = needsWebSearch(message);
+    let searchContextText = "";
+    let searchResults: Array<{title: string, url: string, content: string}> = [];
+    
+    if (shouldSearch) {
+      searchResults = await fetchWebContext(message);
+      searchContextText = formatSearchContext(searchResults);
+    }
+
+    const prompt = `You are a helpful AI assistant.\n\n${searchContextText}${historyText}\n\nUser: ${message}\nAssistant:`;
     const { provider, model: apiModel } = modelConfig;
 
     let responseStream: ReadableStream;
@@ -174,8 +185,23 @@ export async function POST(req: NextRequest) {
           }
         }
       },
-      async flush() {
+      async flush(controller) {
+        // Deterministically append Sources to the stream at the very end
+        if (searchResults.length > 0) {
+          let sourcesMarkdown = "\n\n---\n**🌐 Search Sources:**\n";
+          searchResults.forEach((res, i) => {
+            sourcesMarkdown += `${i + 1}. [${res.title}](${res.url})\n`;
+          });
+          controller.enqueue(new TextEncoder().encode(sourcesMarkdown));
+          fullResponseText += sourcesMarkdown;
+        }
+
         // Save the full assistant message response to DB AFTER streaming finishes perfectly
+        if (!fullResponseText.trim()) {
+           fullResponseText = "An error occurred or the response was empty.";
+           controller.enqueue(new TextEncoder().encode(fullResponseText));
+        }
+
         try {
           await dbConnect();
           await Message.create({
