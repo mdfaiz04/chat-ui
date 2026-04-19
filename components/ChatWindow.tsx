@@ -128,16 +128,36 @@ export default function ChatWindow() {
         }),
       });
 
-      if (!response.ok) throw new Error("Our intelligence systems are experiencing high traffic.");
+      if (!response.ok || !response.body) throw new Error("Our intelligence systems are experiencing high traffic.");
 
-      const reply = await response.text();
-      const aiMsg: MessageType = {
-        role: "assistant",
-        content: reply,
-        createdAt: new Date().toISOString(),
-      };
+      // Stop global loading when the stream starts
+      setIsLoading(false);
 
-      setMessages((prev) => [...prev, aiMsg]);
+      // Create a blank placeholder message
+      const aiMessageId = Date.now().toString();
+      setMessages((prev) => [
+        ...prev,
+        { _id: aiMessageId, role: "assistant", content: "", createdAt: new Date().toISOString() },
+      ]);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let aiText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        aiText += chunk;
+
+        // Progressive UI update
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg._id === aiMessageId ? { ...msg, content: aiText } : msg
+          )
+        );
+      }
 
       if (!threadId && currentThreadId) {
         router.push(`/chat/${currentThreadId}`);
