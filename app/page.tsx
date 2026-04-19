@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import ChatWindow from "@/components/ChatWindow";
 import Sidebar from "@/components/Sidebar";
@@ -137,7 +137,9 @@ export default function Home() {
                   <X className="w-6 h-6" />
                 </button>
 
-                <LoginCard />
+                <Suspense fallback={<div className="flex items-center justify-center p-12 bg-white dark:bg-zinc-900 rounded-[2rem]"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>}>
+                  <LoginCard />
+                </Suspense>
               </motion.div>
             </div>
           )}

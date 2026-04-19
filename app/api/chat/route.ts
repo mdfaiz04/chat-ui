@@ -60,8 +60,8 @@ export async function POST(req: NextRequest) {
     // 2.5 Dynamic Web Search (RAG)
     const shouldSearch = needsWebSearch(message);
     let searchContextText = "";
-    let searchResults: Array<{title: string, url: string, content: string}> = [];
-    
+    let searchResults: Array<{ title: string, url: string, content: string }> = [];
+
     if (shouldSearch) {
       searchResults = await fetchWebContext(message);
       searchContextText = formatSearchContext(searchResults);
@@ -131,30 +131,30 @@ export async function POST(req: NextRequest) {
       transform(chunk, controller) {
         const text = new TextDecoder().decode(chunk);
         buffer += text; // Append to buffer to prevent partial JSON truncation
-        
+
         let lines: string[] = [];
-        
+
         if (isOllama) {
-            // Ollama: Raw JSON lines
-            const splitChar = "\n";
-            const parts = buffer.split(splitChar);
-            buffer = parts.pop() || ""; // Keep the incomplete line in buffer
-            lines = parts;
+          // Ollama: Raw JSON lines
+          const splitChar = "\n";
+          const parts = buffer.split(splitChar);
+          buffer = parts.pop() || ""; // Keep the incomplete line in buffer
+          lines = parts;
         } else {
-            // SSE APIs: double newline splits blocks
-            const splitChar = "\n\n";
-            const parts = buffer.split(splitChar);
-            buffer = parts.pop() || "";
-            // Extract individual data segments
-            lines = parts.flatMap(p => p.split("\n"));
+          // SSE APIs: double newline splits blocks
+          const splitChar = "\n\n";
+          const parts = buffer.split(splitChar);
+          buffer = parts.pop() || "";
+          // Extract individual data segments
+          lines = parts.flatMap(p => p.split("\n"));
         }
 
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed) continue;
-          
+
           let jsonData = "";
-          
+
           if (isOllama) {
             jsonData = trimmed;
           } else {
@@ -166,7 +166,7 @@ export async function POST(req: NextRequest) {
           try {
             const data = JSON.parse(jsonData);
             let textChunk = "";
-            
+
             if (isOllama) {
               textChunk = data.response || "";
             } else if (provider === "gemini") {
@@ -198,8 +198,8 @@ export async function POST(req: NextRequest) {
 
         // Save the full assistant message response to DB AFTER streaming finishes perfectly
         if (!fullResponseText.trim()) {
-           fullResponseText = "An error occurred or the response was empty.";
-           controller.enqueue(new TextEncoder().encode(fullResponseText));
+          fullResponseText = "An error occurred or the response was empty.";
+          controller.enqueue(new TextEncoder().encode(fullResponseText));
         }
 
         try {
@@ -229,7 +229,7 @@ export async function POST(req: NextRequest) {
             content: fullResponseText + " [Stream Interrupted]",
             model: modelValue,
           });
-        } catch(e) { }
+        } catch (e) { }
       }
     });
 

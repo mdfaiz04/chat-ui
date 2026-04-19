@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import LoginCard from "@/components/Auth/LoginCard";
 
 /**
@@ -13,7 +14,9 @@ export default function LoginPage() {
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-500/10 dark:bg-blue-600/10 blur-[130px] rounded-full -z-0 animate-pulse" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-500/10 dark:bg-purple-600/10 blur-[130px] rounded-full -z-0 animate-pulse" style={{ animationDelay: '2s' }} />
 
-      <LoginCard />
+      <Suspense fallback={<div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>}>
+        <LoginCard />
+      </Suspense>
     </div>
   );
 }
