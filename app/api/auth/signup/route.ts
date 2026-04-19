@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import connectToDatabase from "@/lib/mongoose";
+import dbConnect from "@/lib/dbConnect";
 import User from "@/models/User";
 import bcrypt from "bcryptjs";
 
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await connectToDatabase();
+    await dbConnect();
 
     // 2. Check if user already exists
     const existingUser = await User.findOne({ email: email.toLowerCase() });

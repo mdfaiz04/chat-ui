@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import OpenAI from "openai";
-import connectToDatabase from "@/lib/mongoose";
+import dbConnect from "@/lib/dbConnect";
 import Message from "@/models/Message";
 import { getModelConfig, DEFAULT_MODEL } from "@/lib/models";
 
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "User ID missing from session" }, { status: 400 });
     }
 
-    await connectToDatabase();
+    await dbConnect();
 
     const { message, threadId, model } = await req.json();
 

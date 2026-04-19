@@ -32,18 +32,18 @@ export default function Message({ role, content, timestamp, image }: MessageProp
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}
     >
       <div className={`flex flex-col max-w-[85%] md:max-w-[70%] ${isUser ? "items-end" : "items-start"}`}>
-        
+
         {/* Header Area (Role & Time) */}
         <div className={`flex items-center gap-2 mb-2 px-1 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-zinc-600 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
           <div className={`flex items-center gap-1.5 ${isUser ? "text-blue-600 dark:text-blue-400" : ""}`}>
-             {isUser ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3 text-indigo-500" />}
-             <span>{isUser ? "You" : "Nexus AI"}</span>
+            {isUser ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3 text-indigo-500" />}
+            <span>{isUser ? "You" : "Nexus AI"}</span>
           </div>
           <span className="opacity-40">•</span>
           <span>{formattedTime}</span>
@@ -52,27 +52,26 @@ export default function Message({ role, content, timestamp, image }: MessageProp
         {/* Message Bubble container */}
         <div className="relative group w-full">
           <div
-            className={`px-6 py-4 rounded-[1.5rem] text-[15px] leading-relaxed shadow-sm whitespace-pre-line border transition-all ${
-              isUser
-                ? "bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-tr-none border-blue-500/10 shadow-blue-500/10"
-                : "bg-white dark:bg-zinc-900 text-gray-800 dark:text-zinc-200 rounded-tl-none border-gray-100 dark:border-white/5 shadow-gray-200/20 dark:shadow-none"
-            }`}
+            className={`px-6 py-4 rounded-[1.5rem] text-[15px] leading-relaxed shadow-sm whitespace-pre-line border transition-all ${isUser
+              ? "bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-tr-none border-blue-500/10 shadow-blue-500/10"
+              : "bg-white dark:bg-zinc-900 text-gray-800 dark:text-zinc-200 rounded-tl-none border-gray-100 dark:border-white/5 shadow-gray-200/20 dark:shadow-none"
+              }`}
           >
             {image && (
               <div className="mb-4 overflow-hidden rounded-2xl border border-white/10 shadow-lg">
                 <img src={image} alt="Nexus AI Context" className="max-w-full h-auto object-cover max-h-96" />
               </div>
             )}
-            
+
             <div className="font-medium">
               {content}
             </div>
 
             {/* AI Magic Feedback - Subtle visual cue for AI messages */}
             {!isUser && (
-               <div className="absolute top-1 right-2 opacity-10">
-                  <Sparkles className="w-12 h-12 rotate-[-15deg] text-indigo-500" />
-               </div>
+              <div className="absolute top-1 right-2 opacity-10">
+                <Sparkles className="w-12 h-12 rotate-[-15deg] text-indigo-500" />
+              </div>
             )}
           </div>
 

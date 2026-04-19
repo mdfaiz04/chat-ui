@@ -2,16 +2,16 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { 
-  Plus, 
-  MessageSquare, 
-  Trash2, 
-  LogOut, 
-  PanelLeftClose, 
-  PanelLeftOpen, 
-  Search, 
-  Command, 
-  Settings, 
+import {
+  Plus,
+  MessageSquare,
+  Trash2,
+  LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Search,
+  Command,
+  Settings,
   Sparkles,
   User,
   History,
@@ -33,7 +33,7 @@ export default function Sidebar() {
   const params = useParams();
   const { data: session } = useSession();
   const { isOpen, setIsOpen } = useSidebar();
-  
+
   const [threads, setThreads] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -80,7 +80,7 @@ export default function Sidebar() {
   const deleteThread = async (e: React.MouseEvent, threadId: string) => {
     e.stopPropagation();
     if (!confirm("Are you sure you want to delete this chat?")) return;
-    
+
     try {
       const res = await fetch(`/api/thread/${threadId}`, { method: "DELETE" });
       if (res.ok) {
@@ -88,13 +88,13 @@ export default function Sidebar() {
         if (activeThreadId === threadId) router.push("/");
       }
     } catch (error) {
-       console.error("Delete failed:", error);
+      console.error("Delete failed:", error);
     }
   };
 
   const clearAllHistory = async () => {
     if (!confirm("This will permanently delete ALL your chat history. Continue?")) return;
-    
+
     setIsDeletingAll(true);
     try {
       const res = await fetch("/api/thread", { method: "DELETE" });
@@ -109,7 +109,7 @@ export default function Sidebar() {
     }
   };
 
-  const filteredThreads = threads.filter(thread => 
+  const filteredThreads = threads.filter(thread =>
     thread.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -117,7 +117,7 @@ export default function Sidebar() {
     <>
       <motion.aside
         initial={false}
-        animate={{ 
+        animate={{
           width: isOpen ? 280 : 0,
           opacity: isOpen ? 1 : 0
         }}
@@ -125,7 +125,7 @@ export default function Sidebar() {
         className={`fixed lg:relative flex flex-col h-screen bg-white dark:bg-[#080a0f] border-r border-gray-100 dark:border-white/5 z-40 overflow-hidden shrink-0 shadow-2xl lg:shadow-none transition-colors duration-500`}
       >
         <div className="flex flex-col h-full w-[280px]">
-          
+
           {/* Header */}
           <div className="p-6 pb-2 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -134,7 +134,7 @@ export default function Sidebar() {
               </div>
               <span className="text-lg font-black text-gray-900 dark:text-white tracking-tighter">Nexus AI</span>
             </div>
-            <button 
+            <button
               onClick={() => setIsOpen(false)}
               className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-all text-gray-400 hover:text-blue-500 lg:hidden"
             >
@@ -159,7 +159,7 @@ export default function Sidebar() {
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                <input 
+                <input
                   type="text"
                   placeholder="History..."
                   value={searchQuery}
@@ -167,7 +167,7 @@ export default function Sidebar() {
                   className="w-full pl-9 pr-3 py-2 bg-gray-50 dark:bg-zinc-900/50 border border-transparent focus:border-blue-500/20 dark:focus:border-blue-500/30 rounded-lg text-[11px] font-semibold focus:ring-4 focus:ring-blue-500/5 outline-none transition-all placeholder:text-gray-400"
                 />
               </div>
-              <button 
+              <button
                 onClick={clearAllHistory}
                 disabled={threads.length === 0 || isDeletingAll}
                 className="p-2 hover:bg-rose-500/10 text-gray-400 hover:text-rose-500 rounded-lg transition-all disabled:opacity-30"
@@ -194,18 +194,17 @@ export default function Sidebar() {
                       router.push(`/chat/${thread._id}`);
                       if (window.innerWidth < 1024) setIsOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all relative ${
-                      activeThreadId === thread._id 
-                      ? "bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white font-bold" 
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all relative ${activeThreadId === thread._id
+                      ? "bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white font-bold"
                       : "text-gray-500 dark:text-zinc-500 hover:bg-gray-50 dark:hover:bg-white/5 font-medium"
-                    }`}
+                      }`}
                   >
                     <MessageSquare className="w-3.5 h-3.5 shrink-0" />
                     <span className="flex-1 text-left text-xs truncate tracking-tight">
                       {thread.title}
                     </span>
                   </button>
-                  
+
                   <button
                     onClick={(e) => deleteThread(e, thread._id)}
                     className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 opacity-0 group-hover/item:opacity-100 hover:bg-rose-500/10 text-gray-400 hover:text-rose-500 rounded-lg transition-all"
@@ -253,9 +252,8 @@ export default function Sidebar() {
 
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all ${
-                isMenuOpen ? "bg-gray-100 dark:bg-white/10 shadow-inner" : "hover:bg-gray-50 dark:hover:bg-white/5"
-              }`}
+              className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all ${isMenuOpen ? "bg-gray-100 dark:bg-white/10 shadow-inner" : "hover:bg-gray-50 dark:hover:bg-white/5"
+                }`}
             >
               <div className="w-8 h-8 rounded-lg overflow-hidden bg-white dark:bg-zinc-800 border border-gray-200 dark:border-white/10 flex items-center justify-center shrink-0">
                 {session?.user?.image ? (
@@ -266,7 +264,7 @@ export default function Sidebar() {
               </div>
               <div className="flex-1 min-w-0 text-left">
                 <p className="text-[11px] font-black text-gray-900 dark:text-white truncate uppercase tracking-tighter">
-                   {session?.user?.name || "Member"}
+                  {session?.user?.name || "Member"}
                 </p>
               </div>
               <ChevronUp className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-300 ${isMenuOpen ? "rotate-180" : ""}`} />

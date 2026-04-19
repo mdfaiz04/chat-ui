@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import connectToDatabase from "@/lib/mongoose";
+import dbConnect from "@/lib/dbConnect";
 import Thread from "@/models/Thread";
 
 /**
@@ -25,7 +25,7 @@ export async function GET(
 
     console.log(`[API_THREAD_GET] Fetching thread: ${id} for user: ${userId}`);
 
-    await connectToDatabase();
+    await dbConnect();
 
     const thread = await Thread.findOne({ _id: id, userId });
 
@@ -62,7 +62,7 @@ export async function PATCH(
     const userId = (session.user as any).id;
     const { title } = await req.json();
 
-    await connectToDatabase();
+    await dbConnect();
 
     const updatedThread = await Thread.findOneAndUpdate(
       { _id: id, userId },
@@ -104,7 +104,7 @@ export async function DELETE(
 
     console.log(`[API_THREAD_DELETE] Deleting thread: ${id} for user: ${userId}`);
 
-    await connectToDatabase();
+    await dbConnect();
 
     // 1. Delete the thread entry
     const deletedThread = await Thread.findOneAndDelete({ _id: id, userId });

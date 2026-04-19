@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import connectToDatabase from "@/lib/mongoose";
+import dbConnect from "@/lib/dbConnect";
 import Message from "@/models/Message";
 
 /**
@@ -25,12 +25,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "threadId is required" }, { status: 400 });
     }
 
-    await connectToDatabase();
+    await dbConnect();
 
     // Fetch messages for this thread and user
-    const messages = await Message.find({ 
-      threadId, 
-      userId 
+    const messages = await Message.find({
+      threadId,
+      userId
     }).sort({ createdAt: 1 });
 
     return NextResponse.json(messages);
@@ -60,7 +60,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "threadId is required" }, { status: 400 });
     }
 
-    await connectToDatabase();
+    await dbConnect();
 
     // Remove only this user's messages within this thread
     await Message.deleteMany({ threadId, userId });

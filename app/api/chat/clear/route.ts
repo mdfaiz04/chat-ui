@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import connectToDatabase from "@/lib/mongoose";
+import dbConnect from "@/lib/dbConnect";
 import Message from "@/models/Message";
 
 /**
@@ -19,7 +19,7 @@ export async function DELETE() {
       );
     }
 
-    await connectToDatabase();
+    await dbConnect();
 
     const result = await Message.deleteMany({ userId: session.user.email });
 

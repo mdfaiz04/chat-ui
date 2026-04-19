@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import connectToDatabase from "@/lib/mongoose";
+import dbConnect from "@/lib/dbConnect";
 import User from "@/models/User";
 import crypto from "crypto";
 
@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
-    await connectToDatabase();
+    await dbConnect();
     const user = await User.findOne({ email: email.toLowerCase() });
 
     if (!user) {

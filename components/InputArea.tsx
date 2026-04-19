@@ -105,7 +105,7 @@ export default function InputArea({
       className="relative w-full max-w-4xl mx-auto"
     >
       <div className="relative group bg-white/80 dark:bg-zinc-900/80 backdrop-blur-3xl border border-gray-200/50 dark:border-white/5 rounded-[2rem] p-3 shadow-2xl transition-all duration-500 hover:shadow-blue-500/5 focus-within:ring-1 focus-within:ring-blue-500/20">
-        
+
         {/* Input Field Area */}
         <div className="flex flex-col gap-2 min-h-[60px] max-h-[300px] overflow-hidden">
           <textarea
@@ -131,10 +131,10 @@ export default function InputArea({
               >
                 <Plus className={`w-5 h-5 transition-transform duration-300 ${openUpload ? 'rotate-45 text-blue-500' : ''}`} />
               </button>
-              
+
               <AnimatePresence>
                 {openUpload && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -168,7 +168,7 @@ export default function InputArea({
 
               <AnimatePresence>
                 {openModel && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -182,15 +182,14 @@ export default function InputArea({
                           setSelectedModel(model.value);
                           setOpenModel(false);
                         }}
-                        className={`group flex flex-col gap-0.5 w-full text-left px-4 py-3 rounded-xl transition-all ${
-                          selectedModel === model.value
-                            ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
-                            : "text-gray-500 dark:text-zinc-500 hover:bg-gray-50 dark:hover:bg-white/5"
-                        }`}
+                        className={`group flex flex-col gap-0.5 w-full text-left px-4 py-3 rounded-xl transition-all ${selectedModel === model.value
+                          ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+                          : "text-gray-500 dark:text-zinc-500 hover:bg-gray-50 dark:hover:bg-white/5"
+                          }`}
                       >
                         <span className="text-[11px] font-black uppercase tracking-widest">{model.label}</span>
                         <span className={`text-[9px] font-bold ${selectedModel === model.value ? "text-blue-100 opacity-80" : "text-gray-400"}`}>
-                           Engine: {model.provider}
+                          Engine: {model.provider}
                         </span>
                       </button>
                     ))}
@@ -204,11 +203,10 @@ export default function InputArea({
             <button
               type="button"
               onClick={handleMic}
-              className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all active:scale-75 ${
-                isListening
-                  ? "bg-rose-500 text-white shadow-lg shadow-rose-500/20"
-                  : "text-gray-400 hover:text-blue-500 hover:bg-blue-500/5"
-              }`}
+              className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all active:scale-75 ${isListening
+                ? "bg-rose-500 text-white shadow-lg shadow-rose-500/20"
+                : "text-gray-400 hover:text-blue-500 hover:bg-blue-500/5"
+                }`}
             >
               <Mic className="w-5 h-5" />
             </button>
@@ -216,11 +214,10 @@ export default function InputArea({
             <button
               onClick={handleSend}
               disabled={!input.trim() || isLoading}
-              className={`group w-12 h-12 flex items-center justify-center rounded-2xl transition-all duration-300 relative overflow-hidden ${
-                input.trim() && !isLoading
-                  ? "bg-blue-600 text-white shadow-xl shadow-blue-500/30 hover:scale-105 active:scale-90"
-                  : "bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-zinc-600"
-              }`}
+              className={`group w-12 h-12 flex items-center justify-center rounded-2xl transition-all duration-300 relative overflow-hidden ${input.trim() && !isLoading
+                ? "bg-blue-600 text-white shadow-xl shadow-blue-500/30 hover:scale-105 active:scale-90"
+                : "bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-zinc-600"
+                }`}
             >
               <div className="absolute inset-0 bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
               <Send className="relative w-5 h-5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />

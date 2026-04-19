@@ -1,12 +1,11 @@
-// Import the Geist font from Next.js built-in fonts
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import AuthProvider from "@/components/AuthProvider";
 import { SidebarProvider } from "@/lib/context/SidebarContext";
 
-// Load the Geist font — a clean, modern font great for UIs
-const geist = Geist({
+// Load the Inter font — a clean, modern font great for UIs
+const inter = Inter({
   subsets: ["latin"], // Only load Latin characters (smaller file = faster load)
 });
 
@@ -24,7 +23,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geist.className} antialiased`}>
+      <body className={`${inter.className} antialiased`}>
         <AuthProvider>
           <SidebarProvider>
             {children}

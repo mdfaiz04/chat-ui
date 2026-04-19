@@ -154,12 +154,12 @@ export default function ChatWindow() {
 
   return (
     <div className="flex-1 flex flex-col h-full bg-white dark:bg-[#05070d] relative overflow-hidden transition-colors duration-500">
-      
+
 
       {/* Dynamic Background Accents */}
       <div className="absolute top-0 inset-x-0 h-[500px] bg-gradient-to-b from-blue-50/50 dark:from-blue-600/5 to-transparent pointer-events-none" />
       <div className="absolute -top-[10%] -right-[5%] w-[40%] h-[40%] bg-blue-500/10 dark:bg-blue-600/10 blur-[120px] rounded-full pointer-events-none" />
-      
+
       {/* Header - Transparent Glass */}
       <header className="h-20 flex items-center justify-between px-8 bg-white/40 dark:bg-black/20 backdrop-blur-2xl z-20 border-b border-gray-100 dark:border-white/5">
         <div className="flex items-center gap-4">
@@ -170,7 +170,7 @@ export default function ChatWindow() {
           >
             {isOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
           </button>
-          
+
           <div className="flex flex-col">
             <span className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tighter">
               {params?.threadId ? "Conversation" : "Nexus Hub"}
@@ -201,22 +201,22 @@ export default function ChatWindow() {
             >
               <div className="max-w-3xl w-full -mt-20">
                 <div className="relative mb-8 inline-block">
-                   <motion.div 
-                     animate={{ rotate: 360 }}
-                     transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                     className="absolute inset-0 bg-gradient-to-tr from-blue-600/20 to-indigo-600/20 rounded-[2rem] blur-2xl"
-                   />
-                   <div className="relative w-16 h-16 bg-white dark:bg-zinc-900 rounded-[2rem] flex items-center justify-center shadow-2xl border border-gray-100 dark:border-white/10 mx-auto">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                    className="absolute inset-0 bg-gradient-to-tr from-blue-600/20 to-indigo-600/20 rounded-[2rem] blur-2xl"
+                  />
+                  <div className="relative w-16 h-16 bg-white dark:bg-zinc-900 rounded-[2rem] flex items-center justify-center shadow-2xl border border-gray-100 dark:border-white/10 mx-auto">
                     <Sparkles className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-                   </div>
+                  </div>
                 </div>
 
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 dark:text-white mb-6 tracking-tight leading-[1.1]">
                   How can I <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">help you</span> today?
                 </h1>
-                
+
                 <p className="text-base md:text-lg text-gray-500 dark:text-zinc-400 max-w-lg mx-auto font-medium leading-relaxed">
-                  Experience the next generation of artificial intelligence. 
+                  Experience the next generation of artificial intelligence.
                   Start a conversation to unlock creative potential.
                 </p>
               </div>
@@ -261,8 +261,8 @@ export default function ChatWindow() {
             setMessages={setMessages}
           />
           <div className="mt-4 flex items-center justify-center gap-4 text-[9px] font-black text-gray-400 dark:text-zinc-600 uppercase tracking-widest">
-             <span className="flex items-center gap-1"><Zap className="w-3 h-3" /> Real-time Response</span>
-             <span className="flex items-center gap-1"><Info className="w-3 h-3" /> AI may generate errors</span>
+            <span className="flex items-center gap-1"><Zap className="w-3 h-3" /> Real-time Response</span>
+            <span className="flex items-center gap-1"><Info className="w-3 h-3" /> AI may generate errors</span>
           </div>
         </div>
       </footer>
