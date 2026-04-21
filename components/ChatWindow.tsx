@@ -8,9 +8,14 @@ import InputArea from "./InputArea";
 import TypingIndicator from "./TypingIndicator";
 import { ChevronDown, Moon, Sun, Sparkles, Zap, Shield, Command, Globe, Info, PanelLeftOpen, PanelLeftClose } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { DEFAULT_MODEL } from "@/lib/models";
+import { DEFAULT_MODEL, getModelConfig } from "@/lib/models";
 import { useSidebar } from "@/lib/context/SidebarContext";
-import { needsWebSearch } from "@/lib/webSearch";
+
+// Inlined logic for UI search indicator (formerly from webSearch.ts)
+const needsWebSearch = (text: string) => {
+  const triggers = ["search", "find", "who", "what happened", "latest", "news", "current"];
+  return triggers.some(t => text.toLowerCase().includes(t));
+};
 
 interface MessageType {
   _id?: string;
@@ -34,10 +39,40 @@ export default function ChatWindow() {
   const [authError, setAuthError] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<MessageType[]>([]);
+  const skipNextLoadRef = useRef(false);
+  const isStreamingRef = useRef(false);
+  const activeStreamIdRef = useRef<string | null>(null);
 
   useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    // Preserve in-progress UI state across /chat -> /chat/[threadId] navigation.
+    // This avoids the "blink/reset" after first message when we assign a threadId.
+    try {
+      if (threadId) {
+        const raw = sessionStorage.getItem("pending-chat-state");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.threadId === threadId && Array.isArray(parsed?.messages)) {
+            setMessages(parsed.messages);
+            skipNextLoadRef.current = true;
+          }
+          sessionStorage.removeItem("pending-chat-state");
+        }
+      }
+    } catch { }
+
     if (threadId) {
-      loadThreadMessages();
+      if (skipNextLoadRef.current) {
+        skipNextLoadRef.current = false;
+        // Give backend a moment to persist the final assistant message before fetching.
+        setTimeout(() => loadThreadMessages(), 500);
+      } else {
+        loadThreadMessages();
+      }
     } else {
       setMessages([]);
     }
@@ -45,11 +80,15 @@ export default function ChatWindow() {
 
   const loadThreadMessages = async () => {
     try {
+      // Avoid clobbering live-stream UI updates with a fetch result.
+      if (isStreamingRef.current) return;
+
       setIsLoading(true);
       const res = await fetch(`/api/messages?threadId=${threadId}`);
       if (res.ok) {
         const data = await res.json();
-        setMessages(data);
+        // If we already have messages (from optimistic UI), keep whichever is longer.
+        setMessages((prev) => (Array.isArray(data) && data.length >= prev.length ? data : prev));
       }
     } catch (error) {
       console.error("Failed to load thread:", error);
@@ -110,28 +149,42 @@ export default function ChatWindow() {
       }
     }
 
-    const tempUserMsg: MessageType = {
-      role: "user",
-      content,
-      createdAt: new Date().toISOString(),
-    };
-
+    const tempUserMsg: MessageType = { role: "user", content, createdAt: new Date().toISOString() };
     setMessages((prev) => [...prev, tempUserMsg]);
     setIsSearchingWeb(needsWebSearch(content));
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/chat", {
+      const modelConfig = getModelConfig(selectedModel);
+      const useWebSearch = needsWebSearch(content);
+      const backendBaseUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, "") || "http://localhost:5000";
+
+      isStreamingRef.current = true;
+      activeStreamIdRef.current = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+      const response = await fetch(`${backendBaseUrl}/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": (session.user as any).id // Pass for backend validation
+        },
         body: JSON.stringify({
           message: content,
           threadId: currentThreadId,
-          model: selectedModel,
+          model: modelConfig.model,
+          useWebSearch,
+          stream: true
         }),
       });
 
-      if (!response.ok || !response.body) throw new Error("Our intelligence systems are experiencing high traffic.");
+      if (!response.ok) {
+        const text = await response.text().catch(() => "");
+        throw new Error(text || `Backend error (${response.status})`);
+      }
+      if (!response.body) {
+        throw new Error("Backend returned no response stream.");
+      }
 
       // Stop global loading and searching state when the stream starts
       setIsLoading(false);
@@ -147,12 +200,14 @@ export default function ChatWindow() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let aiText = "";
+      let gotAnyChunk = false;
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
+        if (chunk) gotAnyChunk = true;
         aiText += chunk;
 
         // Progressive UI update
@@ -163,13 +218,30 @@ export default function ChatWindow() {
         );
       }
 
+      if (!gotAnyChunk) {
+        throw new Error("Received an empty response stream from backend.");
+      }
+
+      // If we created a new thread from /chat, navigate AFTER stream completes
+      // (prevents canceling the in-flight request) and preserve UI state.
       if (!threadId && currentThreadId) {
-        router.push(`/chat/${currentThreadId}`);
+        try {
+          sessionStorage.setItem(
+            "pending-chat-state",
+            JSON.stringify({
+              threadId: currentThreadId,
+              messages: messagesRef.current,
+            })
+          );
+        } catch { }
+        router.replace(`/chat/${currentThreadId}`);
       }
     } catch (error: any) {
-      setAuthError(error.message);
+      setAuthError(error?.message || "Request failed.");
       setTimeout(() => setAuthError(null), 5000);
     } finally {
+      isStreamingRef.current = false;
+      activeStreamIdRef.current = null;
       setIsLoading(false);
       setIsSearchingWeb(false);
     }
@@ -285,8 +357,8 @@ export default function ChatWindow() {
         </AnimatePresence>
       </main>
 
-      <footer className="absolute bottom-0 inset-x-0 p-8 pt-20 bg-gradient-to-t from-white via-white/80 to-transparent dark:from-[#05070d] dark:via-[#05070d]/80 dark:to-transparent z-30 pointer-events-none">
-        <div className="max-w-3xl mx-auto pointer-events-auto">
+      <footer className="absolute bottom-0 inset-x-0 p-6 pt-24 bg-gradient-to-t from-white via-white/95 to-transparent dark:from-[#05070d] dark:via-[#05070d]/95 dark:to-transparent z-30 pointer-events-none">
+        <div className="max-w-4xl mx-auto pointer-events-auto">
           <InputArea
             onSendMessage={handleSendMessage}
             isLoading={isLoading}
@@ -294,12 +366,14 @@ export default function ChatWindow() {
             setSelectedModel={setSelectedModel}
             setMessages={setMessages}
           />
-          <div className="mt-4 flex items-center justify-center gap-4 text-[9px] font-black text-gray-400 dark:text-zinc-600 uppercase tracking-widest">
-            <span className="flex items-center gap-1"><Zap className="w-3 h-3" /> Real-time Response</span>
-            <span className="flex items-center gap-1"><Info className="w-3 h-3" /> AI may generate errors</span>
+          <div className="mt-2 flex items-center justify-center gap-6 text-[10px] font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-[0.2em]">
+            <span className="flex items-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity"><Zap className="w-3 h-3 text-amber-500" /> Ultra Fast</span>
+            <span className="flex items-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity"><Shield className="w-3 h-3 text-emerald-500" /> Privacy First</span>
+            <span className="flex items-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity"><Sparkles className="w-3 h-3 text-blue-500" /> AI Enhanced</span>
           </div>
         </div>
       </footer>
+
 
       <AnimatePresence>
         {authError && (

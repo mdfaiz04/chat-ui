@@ -9,28 +9,27 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.8.0",
     "mongodb": "^5.9.2",
-    "mongoose": "^7.6.0",
+    "mongoose": "^7.8.9",
     "next": "^14.2.0",
     "next-auth": "^4.24.14",
-    "openai": "^6.34.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",
     "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^20",
+    "@types/node": "^20.19.39",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "autoprefixer": "^10.4.27",
     "eslint": "^8",
     "eslint-config-next": "^14.2.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5.9.3"
   }
 }

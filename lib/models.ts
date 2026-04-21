@@ -18,15 +18,15 @@ export interface ModelConfig {
 
 export const MODELS: ModelConfig[] = [
   {
-    label: "Gemini 2.5 Flash",
+    label: "Gemini 1.5 Flash",
     value: "gemini",
-    model: "gemini-2.5-flash",
+    model: "gemini-1.5-flash",
     provider: "gemini",
   },
   {
-    label: "Gemini 2.5 Pro",
+    label: "Gemini 1.5 Pro",
     value: "gemini-pro",
-    model: "gemini-2.5-pro",
+    model: "gemini-1.5-pro",
     provider: "gemini",
   },
   {

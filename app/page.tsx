@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import ChatWindow from "@/components/ChatWindow";
 import Sidebar from "@/components/Sidebar";
 import LoginCard from "@/components/Auth/LoginCard";
@@ -16,7 +17,15 @@ import { Sparkles, ArrowRight, Bot, X } from "lucide-react";
  */
 export default function Home() {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Keep hook order stable across renders.
+  useEffect(() => {
+    if (status !== "loading" && session) {
+      router.replace("/chat");
+    }
+  }, [router, session, status]);
 
   // Close modal when Escape key is pressed
   useEffect(() => {
@@ -155,11 +164,8 @@ export default function Home() {
 
   // 3. Authenticated App logic
   return (
-    <main className="flex h-[100dvh] overflow-hidden bg-white dark:bg-[#05070d]">
-      <Sidebar />
-      <div className="flex-1 relative flex flex-col min-w-0 overflow-hidden">
-        <ChatWindow />
-      </div>
-    </main>
+    <div className="h-[100dvh] flex items-center justify-center bg-gray-50 dark:bg-[#05070d]">
+      <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>
   );
 }

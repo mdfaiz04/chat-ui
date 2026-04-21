@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Mic, Send, Plus, ChevronDown, Image as ImageIcon, File as FileIcon, Sparkles, Brain, Cpu } from "lucide-react";
+import { Mic, Send, Plus, ChevronDown, Image as ImageIcon, File as FileIcon, Cpu, Loader2, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MODELS } from "@/lib/models";
 
@@ -96,135 +96,155 @@ export default function InputArea({
     }
   };
 
-  const currentModelLabel = MODELS.find(m => m.value === selectedModel)?.label || "Select Model";
+  const currentModel = MODELS.find(m => m.value === selectedModel);
 
   return (
-    <motion.div
-      initial={{ y: 20, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      className="relative w-full max-w-4xl mx-auto"
-    >
-      <div className="relative group bg-white/80 dark:bg-zinc-900/80 backdrop-blur-3xl border border-gray-200/50 dark:border-white/5 rounded-[2rem] p-3 shadow-2xl transition-all duration-500 hover:shadow-blue-500/5 focus-within:ring-1 focus-within:ring-blue-500/20">
+    <div className="w-full max-w-3xl mx-auto px-4 pb-6 pt-2">
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="relative"
+      >
+        {/* Main Input Container */}
+        <div className={`relative group bg-[#fdfdfd] dark:bg-zinc-900/90 border border-zinc-200/60 dark:border-zinc-800/60 rounded-[1.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none transition-all duration-300 focus-within:shadow-[0_12px_40px_rgb(0,0,0,0.08)] focus-within:border-zinc-300/80 dark:focus-within:border-zinc-700/80`}>
 
-        {/* Input Field Area */}
-        <div className="flex flex-col gap-2 min-h-[60px] max-h-[300px] overflow-hidden">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask anything or use '/' for commands..."
-            rows={1}
-            disabled={isLoading}
-            className="w-full bg-transparent outline-none text-gray-800 dark:text-zinc-100 px-4 py-3 resize-none leading-relaxed placeholder-gray-400 dark:placeholder-zinc-600 font-medium text-[16px]"
-          />
-        </div>
+          <div className="flex flex-col p-1.5">
+            {/* Textarea Area */}
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask anything..."
+              rows={1}
+              disabled={isLoading}
+              className="w-full bg-transparent outline-none text-zinc-700 dark:text-zinc-200 px-4 pt-3 pb-1 resize-none leading-relaxed placeholder-zinc-400 dark:placeholder-zinc-600 font-medium text-[16px] min-h-[52px] max-h-[200px]"
+            />
 
-        {/* Toolbar Area */}
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-white/5">
-          <div className="flex items-center gap-2">
-            <div className="relative" ref={uploadRef}>
-              <button
-                type="button"
-                onClick={() => setOpenUpload(!openUpload)}
-                className="p-2.5 rounded-2xl text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-all active:scale-90"
-              >
-                <Plus className={`w-5 h-5 transition-transform duration-300 ${openUpload ? 'rotate-45 text-blue-500' : ''}`} />
-              </button>
-
-              <AnimatePresence>
-                {openUpload && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute bottom-full mb-4 left-0 w-52 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-white/10 rounded-2xl shadow-2xl p-2 z-[60]"
+            {/* Bottom Actions Row */}
+            <div className="flex items-center justify-between px-2 pb-1.5">
+              <div className="flex items-center gap-3">
+                {/* Upload Button */}
+                <div className="relative" ref={uploadRef}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenUpload(!openUpload)}
+                    className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors active:scale-90"
                   >
-                    <button className="flex items-center gap-3 w-full px-3 py-2.5 text-xs font-black text-gray-500 uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-colors">
-                      <ImageIcon className="w-4 h-4" />
-                      Image context
-                    </button>
-                    <button className="flex items-center gap-3 w-full px-3 py-2.5 text-xs font-black text-gray-500 uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-colors">
-                      <FileIcon className="w-4 h-4" />
-                      Knowledge base
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                    <Plus className={`w-5 h-5 transition-transform duration-300 ${openUpload ? 'rotate-45' : ''}`} />
+                  </button>
 
-            <div className="h-6 w-[1px] bg-gray-100 dark:bg-white/5 mx-1" />
-
-            <div className="relative" ref={dropdownRef}>
-              <button
-                type="button"
-                onClick={() => setOpenModel(!openModel)}
-                className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 text-[10px] font-black uppercase tracking-[0.1em] text-gray-500 dark:text-zinc-400 transition-all active:scale-95"
-              >
-                <Cpu className="w-3.5 h-3.5 text-blue-500" />
-                {currentModelLabel}
-                <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${openModel ? 'rotate-180 text-blue-500' : ''}`} />
-              </button>
-
-              <AnimatePresence>
-                {openModel && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute bottom-full mb-4 right-0 w-64 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-white/10 rounded-2xl shadow-2xl p-2 z-[60]"
-                  >
-                    {MODELS.map((model) => (
-                      <button
-                        key={model.value}
-                        type="button"
-                        onClick={() => {
-                          setSelectedModel(model.value);
-                          setOpenModel(false);
-                        }}
-                        className={`group flex flex-col gap-0.5 w-full text-left px-4 py-3 rounded-xl transition-all ${selectedModel === model.value
-                          ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
-                          : "text-gray-500 dark:text-zinc-500 hover:bg-gray-50 dark:hover:bg-white/5"
-                          }`}
+                  <AnimatePresence>
+                    {openUpload && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                        className="absolute bottom-full left-0 mb-3 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-1.5 z-[100] backdrop-blur-xl"
                       >
-                        <span className="text-[11px] font-black uppercase tracking-widest">{model.label}</span>
-                        <span className={`text-[9px] font-bold ${selectedModel === model.value ? "text-blue-100 opacity-80" : "text-gray-400"}`}>
-                          Engine: {model.provider}
-                        </span>
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                        <button className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-xl transition-colors">
+                          <ImageIcon className="w-4 h-4 text-blue-500" />
+                          Images
+                        </button>
+                        <button className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-xl transition-colors">
+                          <FileIcon className="w-4 h-4 text-emerald-500" />
+                          Documents
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* FAST indicator (from reference) */}
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-zinc-100/50 dark:bg-zinc-800/50 border border-zinc-200/50 dark:border-zinc-700/50">
+                  <Sparkles className="w-3 h-3 text-amber-500" />
+                  <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Fast</span>
+                </div>
+              </div>
+
+              {/* Right Side Actions */}
+              <div className="flex items-center gap-2">
+                {/* Model Selector Pill (Inside) */}
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => setOpenModel(!openModel)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/80 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all active:scale-95"
+                  >
+                    <span className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
+                      {currentModel?.label || "Select Model"}
+                    </span>
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openModel ? 'rotate-180' : ''} text-zinc-400`} />
+                  </button>
+
+                  <AnimatePresence>
+                    {openModel && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                        className="absolute bottom-full right-0 mb-3 w-56 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-1.5 z-[100] backdrop-blur-xl"
+                      >
+                        {MODELS.map((model) => (
+                          <button
+                            key={model.value}
+                            type="button"
+                            onClick={() => {
+                              setSelectedModel(model.value);
+                              setOpenModel(false);
+                            }}
+                            className={`flex flex-col w-full text-left px-3 py-2 rounded-xl transition-all ${selectedModel === model.value
+                              ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold"
+                              : "text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 font-medium"
+                              }`}
+                          >
+                            <span className="text-xs">{model.label}</span>
+                            <span className="text-[9px] opacity-60 uppercase tracking-tighter">{model.provider}</span>
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Voice Button */}
+                <button
+                  type="button"
+                  onClick={handleMic}
+                  className={`p-2 rounded-full transition-all active:scale-90 ${isListening
+                    ? "text-rose-500 animate-pulse"
+                    : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                    }`}
+                >
+                  <Mic className="w-5 h-5" />
+                </button>
+
+                {/* Send Button */}
+                <button
+                  onClick={handleSend}
+                  disabled={!input.trim() || isLoading}
+                  className={`flex items-center justify-center w-9 h-9 rounded-full transition-all duration-300 ${input.trim() && !isLoading
+                    ? "bg-zinc-100 dark:bg-white/10 text-zinc-400 dark:text-white hover:bg-zinc-200 dark:hover:bg-white/20 active:scale-95 shadow-sm"
+                    : "bg-zinc-50 dark:bg-zinc-800/50 text-zinc-200 dark:text-zinc-700"
+                    }`}
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                  ) : (
+                    <Send className={`w-4 h-4 ${input.trim() ? 'text-zinc-700 dark:text-white' : ''}`} />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleMic}
-              className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all active:scale-75 ${isListening
-                ? "bg-rose-500 text-white shadow-lg shadow-rose-500/20"
-                : "text-gray-400 hover:text-blue-500 hover:bg-blue-500/5"
-                }`}
-            >
-              <Mic className="w-5 h-5" />
-            </button>
-
-            <button
-              onClick={handleSend}
-              disabled={!input.trim() || isLoading}
-              className={`group w-12 h-12 flex items-center justify-center rounded-2xl transition-all duration-300 relative overflow-hidden ${input.trim() && !isLoading
-                ? "bg-blue-600 text-white shadow-xl shadow-blue-500/30 hover:scale-105 active:scale-90"
-                : "bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-zinc-600"
-                }`}
-            >
-              <div className="absolute inset-0 bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <Send className="relative w-5 h-5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-            </button>
-          </div>
         </div>
-      </div>
-    </motion.div>
+
+        {/* Bottom Helper Text */}
+        <div className="mt-3 text-center">
+          <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-widest opacity-60">
+            Nexus Intelligence Framework
+          </p>
+        </div>
+      </motion.div>
+    </div>
   );
 }
