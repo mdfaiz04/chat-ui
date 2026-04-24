@@ -9,6 +9,12 @@ export const AI_CONFIG = {
   providers: {
     gemini: {
       apiKey: process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY,
+      flashModel: process.env.GEMINI_FLASH_MODEL,
+      proModel: process.env.GEMINI_PRO_MODEL,
+      fallbackModels: (process.env.GEMINI_FALLBACK_MODELS || "gemini-2.5-flash-lite,gemini-2.0-flash,gemini-2.0-flash-lite")
+        .split(",")
+        .map((model) => model.trim())
+        .filter(Boolean),
     },
     openai: {
       apiKey: process.env.OPENAI_API_KEY,
