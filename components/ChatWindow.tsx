@@ -17,6 +17,17 @@ const needsWebSearch = (text: string) => {
   return triggers.some(t => text.toLowerCase().includes(t));
 };
 
+const getReadableError = (raw: string, fallback: string) => {
+  if (!raw) return fallback;
+
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed.details || parsed.detail || parsed.error || fallback;
+  } catch {
+    return raw;
+  }
+};
+
 interface MessageType {
   _id?: string;
   role: "user" | "assistant";
@@ -180,7 +191,7 @@ export default function ChatWindow() {
 
       if (!response.ok) {
         const text = await response.text().catch(() => "");
-        throw new Error(text || `Backend error (${response.status})`);
+        throw new Error(getReadableError(text, `Backend error (${response.status})`));
       }
       if (!response.body) {
         throw new Error("Backend returned no response stream.");

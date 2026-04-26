@@ -122,9 +122,9 @@ export default function Sidebar() {
           opacity: isOpen ? 1 : 0
         }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        className={`fixed lg:relative flex flex-col h-screen bg-white dark:bg-[#080a0f] border-r border-gray-100 dark:border-white/5 z-40 overflow-hidden shrink-0 shadow-2xl lg:shadow-none transition-colors duration-500`}
+        className="fixed top-0 left-0 h-screen w-[280px] lg:relative flex flex-col bg-white dark:bg-[#080a0f] border-r border-gray-100 dark:border-white/5 z-40 shrink-0 shadow-2xl lg:shadow-none transition-colors duration-500"
       >
-        <div className="flex flex-col h-full w-[280px]">
+        <div className="flex flex-col h-screen w-[280px]">
 
           {/* Header */}
           <div className="p-6 pb-2 flex items-center justify-between">
@@ -179,7 +179,7 @@ export default function Sidebar() {
           </div>
 
           {/* Thread List */}
-          <div className="flex-1 overflow-y-auto px-2 space-y-0.5 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto min-h-0 px-2 space-y-0.5 custom-scrollbar">
             {isLoading ? (
               <div className="space-y-2 p-2">
                 {[1, 2, 3].map(i => (
@@ -222,7 +222,7 @@ export default function Sidebar() {
           </div>
 
           {/* Minimal Profile Section - ChatGPT Style */}
-          <div className="p-3 mt-auto relative" ref={menuRef}>
+          <div className="p-3 mt-auto relative border-t border-gray-100 dark:border-white/5 bg-white dark:bg-[#080a0f]" ref={menuRef}>
             <AnimatePresence>
               {isMenuOpen && (
                 <motion.div

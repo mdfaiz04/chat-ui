@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
+  experimental: {
+    webpackBuildWorker: false,
+    workerThreads: true,
+    cpus: 1,
+  },
 };
 
 export default nextConfig;
