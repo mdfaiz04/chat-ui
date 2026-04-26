@@ -41,19 +41,43 @@ desktop.ini
 next-env.d.ts
 
 # =========================
-# 🔹 SERVICE SPECIFIC
+# 🔹 NEXT.JS (chat-ui)
 # =========================
 
 chat-ui/.next/
 chat-ui/out/
+
+# =========================
+# 🔹 BACKEND + AGENT (Express)
+# =========================
+
 backend-service/dist/
 agent-service/dist/
+
+# Optional temp files
+tmp/
+temp/
+
+# =========================
+# 🔹 PACKAGE MANAGERS
+# =========================
+
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# =========================
+# 🔹 VERCEL / DEPLOY
+# =========================
+
+.vercel
 
 # =========================
 # 🔹 MISC
 # =========================
 
-tmp/
-temp/
 *.pem
-.vercel
