@@ -1,4 +1,6 @@
+/// <reference lib="dom" />
 import { AI_CONFIG } from "../config";
+
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 /**
@@ -20,10 +22,10 @@ function normalizeGeminiModel(model: string): string {
   const lower = model.toLowerCase();
 
   if (lower.includes("pro")) {
-    return AI_CONFIG.providers.gemini.proModel || "gemini-2.5-pro";
+    return AI_CONFIG.providers.gemini.proModel || "gemini-1.5-pro";
   }
 
-  return AI_CONFIG.providers.gemini.flashModel || "gemini-2.5-flash";
+  return AI_CONFIG.providers.gemini.flashModel || "gemini-1.5-flash";
 }
 
 function getGeminiModelCandidates(model: string): string[] {
@@ -43,12 +45,16 @@ function isTemporaryGeminiError(message: string): boolean {
 }
 
 function toGeminiUserError(message: string, modelName: string, triedModels: string[]): Error {
+  if (message.includes("403") || message.includes("forbidden") || message.includes("leaked")) {
+    return new Error("Gemini API key is invalid or leaked. Please ensure you have replaced it in agent-service/.env and RESTARTED the service.");
+  }
+
   if (message.includes("streamGenerateContent")) {
     return new Error("Gemini response failed because streaming is not supported for the selected model.");
   }
 
-  if (message.includes("not found for API version") || message.includes("Model not found")) {
-    return new Error(`Gemini model "${modelName}" is not available for this API key. Update GEMINI_FLASH_MODEL/GEMINI_PRO_MODEL in agent-service/.env or choose an available Gemini model from Google AI Studio.`);
+  if (message.includes("not found for API version") || message.includes("Model not found") || message.includes("404")) {
+    return new Error(`Gemini model "${modelName}" is not available. Please check your model configuration.`);
   }
 
   if (isTemporaryGeminiError(message)) {
@@ -79,7 +85,23 @@ async function generateGeminiText(apiKey: string, modelName: string, prompt: str
   return result.response.text();
 }
 
-function createGeminiCompatibleStream(responseText: string) {
+async function handleOllamaFallback(prompt: string, error: any): Promise<ReadableStream<Uint8Array>> {
+  console.warn(`[FALLBACK] Gemini failed. Switching to Ollama. Error: ${error.message}`);
+  const baseUrl = AI_CONFIG.providers.ollama.baseUrl;
+  const res = await fetch(`${baseUrl}/api/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "llama3", // Default fallback model for Ollama
+      prompt,
+      stream: true,
+    }),
+  });
+  if (!res.ok) throw new Error(`Ollama Fallback Failed: ${res.statusText}`);
+  return res.body as ReadableStream<Uint8Array>;
+}
+
+function createGeminiCompatibleStream(responseText: string): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
 
   return new ReadableStream({
@@ -102,19 +124,25 @@ function createGeminiCompatibleStream(responseText: string) {
         controller.error(err);
       }
     }
-  }) as any;
+  });
 }
 
-export async function initiateAIStream(model: string, prompt: string) {
-  // Normalize model name - remove provider prefix if present (e.g., "google:gemini-1.5-flash-latest" -> "gemini-1.5-flash-latest")
+
+export async function initiateAIStream(model: string, prompt: string): Promise<ReadableStream<Uint8Array>> {
+  // Normalize model name
   const apiModel = model.includes(":") ? model.split(":")[1] : model;
   const provider = getProviderFromModel(apiModel);
 
-  console.log("Routing model:", model, "-> provider:", provider);
+  console.log(`[ROUTER] Routing model: ${model} -> provider: ${provider}`);
 
   if (provider === "google") {
     const apiKey = AI_CONFIG.providers.gemini.apiKey;
-    if (!apiKey) throw new Error("Invalid API key: Google API Key is missing.");
+    console.log(`[DEBUG] Gemini key loaded: ${apiKey ? "YES" : "NO"}`);
+
+    if (!apiKey) {
+      console.error("[ERROR] Google API Key is missing. Falling back to Ollama.");
+      return handleOllamaFallback(prompt, new Error("Missing Gemini API Key"));
+    }
 
     const modelCandidates = getGeminiModelCandidates(apiModel);
     const triedModels: string[] = [];
@@ -122,7 +150,7 @@ export async function initiateAIStream(model: string, prompt: string) {
 
     for (const modelName of modelCandidates) {
       triedModels.push(modelName);
-      console.log("Using Gemini model:", modelName);
+      console.log(`[DEBUG] Attempting Gemini model: ${modelName}`);
 
       for (let attempt = 1; attempt <= 2; attempt++) {
         try {
@@ -131,27 +159,32 @@ export async function initiateAIStream(model: string, prompt: string) {
         } catch (err: any) {
           lastError = err;
           const message = err?.message || String(err);
-          console.error(`[GEMINI_ERROR] ${modelName} attempt ${attempt}: ${message}`);
+          console.error(`[GEMINI_ERROR] ${modelName} (attempt ${attempt}): ${message}`);
+
+          // If it's a 403 (leaked key), don't bother retrying or trying other models
+          if (message.includes("403") || message.includes("forbidden") || message.includes("leaked")) {
+            console.warn("[CRITICAL] Gemini Key error detected. Triggering immediate fallback.");
+            return handleOllamaFallback(prompt, toGeminiUserError(message, modelName, triedModels));
+          }
 
           if (!isTemporaryGeminiError(message)) {
-            throw toGeminiUserError(message, modelName, triedModels);
+            // Try next model if this one isn't available
+            break;
           }
 
-          if (attempt < 2) {
-            await wait(1000);
-          }
+          if (attempt < 2) await wait(1000);
         }
       }
     }
 
-    const message = lastError?.message || String(lastError);
-    throw toGeminiUserError(message, modelCandidates[modelCandidates.length - 1], triedModels);
+    // If all Gemini attempts failed, fallback to Ollama instead of throwing
+    return handleOllamaFallback(prompt, lastError);
   }
-
 
   if (provider === "openai") {
     const apiKey = AI_CONFIG.providers.openai.apiKey;
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    const res = await globalThis.fetch("https://api.openai.com/v1/chat/completions", {
+
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -164,12 +197,13 @@ export async function initiateAIStream(model: string, prompt: string) {
       }),
     });
     if (!res.ok) throw new Error(`OpenAI API error: ${res.statusText}`);
-    return res.body!;
+    return res.body as ReadableStream<Uint8Array>;
   }
 
   if (provider === "ollama") {
     const baseUrl = AI_CONFIG.providers.ollama.baseUrl;
-    const res = await fetch(`${baseUrl}/api/generate`, {
+    const res = await globalThis.fetch(`${baseUrl}/api/generate`, {
+
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -179,7 +213,7 @@ export async function initiateAIStream(model: string, prompt: string) {
       }),
     });
     if (!res.ok) throw new Error(`Ollama API error: ${res.statusText}`);
-    return res.body!;
+    return res.body as ReadableStream<Uint8Array>;
   }
 
   throw new Error(`Unsupported AI engine: ${provider} for model ${model}`);

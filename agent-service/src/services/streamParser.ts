@@ -1,16 +1,18 @@
+/// <reference lib="dom" />
 /**
  * Agent Stream Parser
+
  * Converts raw provider SSE into a unified text-only stream.
  */
 export function createStandardStream(
-  responseStream: any, // ReadableStream from fetch
+  responseStream: ReadableStream<Uint8Array>,
   provider: string
-) {
+): ReadableStream<Uint8Array> {
   let fullResponseText = "";
   let buffer = "";
   const isOllama = provider === "ollama";
 
-  const transformStream = new TransformStream({
+  const transformStream = new TransformStream<Uint8Array, Uint8Array>({
     transform(chunk, controller) {
       const text = new TextDecoder().decode(chunk, { stream: true });
       buffer += text;
@@ -52,5 +54,6 @@ export function createStandardStream(
     }
   });
 
-  return (responseStream as any).pipeThrough(transformStream);
+  return responseStream.pipeThrough(transformStream);
 }
+

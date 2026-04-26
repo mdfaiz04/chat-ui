@@ -1,9 +1,16 @@
-import { needsWebSearch, fetchWebContext, formatSearchContext } from "./webSearch";
+/// <reference lib="dom" />
+import { needsWebSearch, fetchWebContext, formatSearchContext, WebSearchResult } from "./webSearch";
+
+
+export interface EnhancedContext {
+  contextText: string;
+  results: WebSearchResult[];
+}
 
 /**
  * Agent RAG Service
  */
-export async function getEnhancedContext(message: string) {
+export async function getEnhancedContext(message: string): Promise<EnhancedContext> {
   const shouldSearch = needsWebSearch(message);
 
   if (!shouldSearch) {
@@ -15,3 +22,4 @@ export async function getEnhancedContext(message: string) {
 
   return { contextText, results };
 }
+

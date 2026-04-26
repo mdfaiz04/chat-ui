@@ -1,9 +1,23 @@
+import dotenv from 'dotenv';
+// IMPORTANT: Initialize dotenv at the absolute top before any other imports
+dotenv.config();
+
+const gKey = process.env.GOOGLE_API_KEY;
+const geminiKey = process.env.GEMINI_API_KEY;
+
+console.log(`\n--- [ENV VERIFICATION] ---`);
+console.log(`GEMINI_API_KEY present: ${geminiKey ? 'YES' : 'NO'}`);
+if (gKey) {
+  console.warn(`WARNING: GOOGLE_API_KEY is also present and will take priority over GEMINI_API_KEY.`);
+}
+console.log(`Effective Gemini Key (Safe Peek): ${(gKey || geminiKey || 'N/A').substring(0, 6)}...`);
+console.log(`---------------------------\n`);
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
-
-dotenv.config();
 import { initiateAIStream } from './services/modelRouter';
+
+
 import { createStandardStream } from './services/streamParser';
 import { constructPrompt } from './services/promptBuilder';
 import { getEnhancedContext } from './services/ragService';

@@ -1,9 +1,19 @@
+/// <reference lib="dom" />
 import { AI_CONFIG } from "../config";
+
 
 export interface WebSearchResult {
   title: string;
   content: string;
   url: string;
+}
+
+interface TavilyResponse {
+  results: Array<{
+    title?: string;
+    content?: string;
+    url?: string;
+  }>;
 }
 
 export function needsWebSearch(message: string): boolean {
@@ -13,10 +23,14 @@ export function needsWebSearch(message: string): boolean {
 
 export async function fetchWebContext(query: string): Promise<WebSearchResult[]> {
   const apiKey = AI_CONFIG.rag.tavilyKey;
-  if (!apiKey) return [];
+  if (!apiKey) {
+    console.warn("[RAG_WARN] TAVILY_API_KEY is not set. Web search disabled.");
+    return [];
+  }
 
   try {
-    const response = await fetch("https://api.tavily.com/search", {
+    const response = await globalThis.fetch("https://api.tavily.com/search", {
+
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -26,23 +40,34 @@ export async function fetchWebContext(query: string): Promise<WebSearchResult[]>
       }),
     });
 
-    if (!response.ok) return [];
-    const data = await response.json();
-    return data.results.map((r: any) => ({
+    if (!response.ok) {
+      console.error(`[TAVILY_ERROR] Status: ${response.status}`);
+      return [];
+    }
+
+    const data = (await response.json()) as TavilyResponse;
+
+    if (!data.results || !Array.isArray(data.results)) {
+      return [];
+    }
+
+    return data.results.map((r) => ({
       title: r.title || "Unknown",
       content: r.content || "",
       url: r.url || "",
     }));
-  } catch (error) {
+  } catch (error: any) {
+    console.error(`[RAG_ERROR] ${error.message}`);
     return [];
   }
 }
 
 export function formatSearchContext(results: WebSearchResult[]): string {
   if (!results.length) return "";
-  let context = "=== SEARCH RESULTS ===\n";
+  let context = "\n=== WEB SEARCH CONTEXT ===\n";
   results.forEach((res, i) => {
-    context += `[${i + 1}] ${res.title}\n${res.content.substring(0, 300)}\nURL: ${res.url}\n\n`;
+    context += `[Source ${i + 1}]: ${res.title}\n${res.content.substring(0, 400)}\nLink: ${res.url}\n\n`;
   });
-  return context + "=== END ===\n";
+  return context + "=== END OF CONTEXT ===\n";
 }
+
