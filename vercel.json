@@ -1,0 +1,6 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "cd chat-ui && npm install && npm run build",
+  "installCommand": "cd chat-ui && npm install",
+  "outputDirectory": "chat-ui/.next"
+}
