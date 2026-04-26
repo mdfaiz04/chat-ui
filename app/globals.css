@@ -1,0 +1,92 @@
+@import "tailwindcss";
+@custom-variant dark (&:is(.dark *));
+
+html,
+body {
+  font-family: sans-serif;
+}
+
+/* Custom animation for messages fading in when they appear */
+/* @keyframes defines the animation: start invisible + shifted down, end fully visible */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    /* Start fully transparent */
+    transform: translateY(10px);
+    /* Start 10px lower than final position */
+  }
+
+  to {
+    opacity: 1;
+    /* End fully visible */
+    transform: translateY(0);
+    /* End at normal position */
+  }
+}
+
+/* This class applies the animation — we'll use it in the Message component */
+/* 0.3s = animation lasts 0.3 seconds */
+/* ease-out = starts fast, slows down at the end (natural feel) */
+.message-animate {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+/* Smooth scrollbar styling for the message list */
+/* Makes the scrollbar thin and subtle instead of the default chunky one */
+.messages-scroll::-webkit-scrollbar {
+  width: 4px;
+  /* Thin scrollbar */
+}
+
+.messages-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  /* Invisible track */
+}
+
+.messages-scroll::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  /* Light gray thumb */
+  border-radius: 2px;
+}
+
+/* Dark mode scrollbar */
+.dark .messages-scroll::-webkit-scrollbar-thumb {
+  background: #374151;
+}
+
+/* Custom animation for dropdowns */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0) translateX(0);
+  }
+
+  33% {
+    transform: translateY(-30px) translateX(15px);
+  }
+
+  66% {
+    transform: translateY(-15px) translateX(-15px);
+  }
+}
+
+.animate-float {
+  animation: float 15s ease-in-out infinite;
+}
